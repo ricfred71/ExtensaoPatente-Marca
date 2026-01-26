@@ -45,6 +45,39 @@ class DataAnonymizer {
     }
 
     /**
+     * Valida CPF usando o algoritmo de dígitos verificadores
+     */
+    isValidCPF(cpf) {
+        // Remove caracteres não numéricos
+        cpf = cpf.replace(/\D/g, '');
+        
+        if (cpf.length !== 11) return false;
+        
+        // CPFs com todos os dígitos iguais são inválidos
+        if (/^(\d)\1{10}$/.test(cpf)) return false;
+        
+        // Valida primeiro dígito verificador
+        let sum = 0;
+        for (let i = 0; i < 9; i++) {
+            sum += parseInt(cpf.charAt(i)) * (10 - i);
+        }
+        let digit1 = 11 - (sum % 11);
+        if (digit1 >= 10) digit1 = 0;
+        
+        if (parseInt(cpf.charAt(9)) !== digit1) return false;
+        
+        // Valida segundo dígito verificador
+        sum = 0;
+        for (let i = 0; i < 10; i++) {
+            sum += parseInt(cpf.charAt(i)) * (11 - i);
+        }
+        let digit2 = 11 - (sum % 11);
+        if (digit2 >= 10) digit2 = 0;
+        
+        return parseInt(cpf.charAt(10)) === digit2;
+    }
+
+    /**
      * Anonimiza CPF no formato xxx.xxx.xxx-xx ou xxxxxxxxxxx
      */
     anonymizeCPF(text) {
@@ -54,23 +87,62 @@ class DataAnonymizer {
         const cpfRegex2 = /\b\d{11}\b/g;
         
         text = text.replace(cpfRegex1, (match) => {
-            this.stats.cpf++;
-            this.replacementMap.set(`CPF-${this.replacementCounter}`, match);
-            this.replacementCounter++;
-            return '[CPF-REDACTED]';
+            if (this.isValidCPF(match)) {
+                this.stats.cpf++;
+                this.replacementMap.set(`CPF-${this.replacementCounter}`, match);
+                this.replacementCounter++;
+                return '[CPF-REDACTED]';
+            }
+            return match;
         });
         
-        // Para números de 11 dígitos, verificar se não é telefone (heurística simples)
+        // Para números de 11 dígitos, valida se é CPF antes de anonimizar
         text = text.replace(cpfRegex2, (match) => {
-            // Se começar com 0, provavelmente não é CPF
-            if (match[0] === '0') return match;
-            this.stats.cpf++;
-            this.replacementMap.set(`CPF-${this.replacementCounter}`, match);
-            this.replacementCounter++;
-            return '[CPF-REDACTED]';
+            if (this.isValidCPF(match)) {
+                this.stats.cpf++;
+                this.replacementMap.set(`CPF-${this.replacementCounter}`, match);
+                this.replacementCounter++;
+                return '[CPF-REDACTED]';
+            }
+            return match;
         });
         
         return text;
+    }
+
+    /**
+     * Valida CNPJ usando o algoritmo de dígitos verificadores
+     */
+    isValidCNPJ(cnpj) {
+        // Remove caracteres não numéricos
+        cnpj = cnpj.replace(/\D/g, '');
+        
+        if (cnpj.length !== 14) return false;
+        
+        // CNPJs com todos os dígitos iguais são inválidos
+        if (/^(\d)\1{13}$/.test(cnpj)) return false;
+        
+        // Valida primeiro dígito verificador
+        let sum = 0;
+        let weight = 5;
+        for (let i = 0; i < 12; i++) {
+            sum += parseInt(cnpj.charAt(i)) * weight;
+            weight = weight === 2 ? 9 : weight - 1;
+        }
+        let digit1 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+        
+        if (parseInt(cnpj.charAt(12)) !== digit1) return false;
+        
+        // Valida segundo dígito verificador
+        sum = 0;
+        weight = 6;
+        for (let i = 0; i < 13; i++) {
+            sum += parseInt(cnpj.charAt(i)) * weight;
+            weight = weight === 2 ? 9 : weight - 1;
+        }
+        let digit2 = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+        
+        return parseInt(cnpj.charAt(13)) === digit2;
     }
 
     /**
@@ -83,17 +155,23 @@ class DataAnonymizer {
         const cnpjRegex2 = /\b\d{14}\b/g;
         
         text = text.replace(cnpjRegex1, (match) => {
-            this.stats.cnpj++;
-            this.replacementMap.set(`CNPJ-${this.replacementCounter}`, match);
-            this.replacementCounter++;
-            return '[CNPJ-REDACTED]';
+            if (this.isValidCNPJ(match)) {
+                this.stats.cnpj++;
+                this.replacementMap.set(`CNPJ-${this.replacementCounter}`, match);
+                this.replacementCounter++;
+                return '[CNPJ-REDACTED]';
+            }
+            return match;
         });
         
         text = text.replace(cnpjRegex2, (match) => {
-            this.stats.cnpj++;
-            this.replacementMap.set(`CNPJ-${this.replacementCounter}`, match);
-            this.replacementCounter++;
-            return '[CNPJ-REDACTED]';
+            if (this.isValidCNPJ(match)) {
+                this.stats.cnpj++;
+                this.replacementMap.set(`CNPJ-${this.replacementCounter}`, match);
+                this.replacementCounter++;
+                return '[CNPJ-REDACTED]';
+            }
+            return match;
         });
         
         return text;
@@ -150,11 +228,12 @@ class DataAnonymizer {
     }
 
     /**
-     * Anonimiza nomes próprios comuns (heurística simples)
+     * Anonimiza nomes próprios comuns (heurística conservadora)
      * Procura por palavras capitalizadas que podem ser nomes
+     * Usa uma abordagem conservadora para minimizar falsos positivos
      */
     anonymizeNames(text) {
-        // Lista de palavras que não devem ser consideradas nomes
+        // Lista expandida de palavras que não devem ser consideradas nomes
         const excludedWords = new Set([
             'INPI', 'Brasil', 'Brasileiro', 'Brasileira', 'CPF', 'CNPJ', 'RG',
             'São', 'Paulo', 'Rio', 'Janeiro', 'Minas', 'Gerais', 'Santa', 'Catarina',
@@ -162,25 +241,34 @@ class DataAnonymizer {
             'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo',
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-            'Rua', 'Avenida', 'Alameda', 'Praça', 'Travessa'
+            'Rua', 'Avenida', 'Alameda', 'Praça', 'Travessa',
+            'Instituto', 'Nacional', 'Propriedade', 'Industrial', 'Serviços',
+            'Software', 'Empresa', 'Tecnológicas', 'Inovações'
         ]);
         
-        // Padrão para nomes próprios: 2 ou mais palavras capitalizadas seguidas
-        // Ex: João Silva, Maria da Costa, etc.
-        const namePattern = /\b([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ][a-záàâãéèêíïóôõöúçñ]+(?:\s+(?:da|de|do|das|dos|e)\s+)?(?:\s+[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ][a-záàâãéèêíïóôõöúçñ]+)+)\b/g;
+        // Padrão mais específico para nomes próprios: procura por sequências típicas de nomes brasileiros
+        // Ex: Nome + Sobrenome, Nome + de/da/do + Sobrenome
+        // Requer pelo menos uma palavra com mais de 3 caracteres para evitar iniciais
+        const namePattern = /\b([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ][a-záàâãéèêíïóôõöúçñ]{2,}(?:\s+(?:da|de|do|das|dos)\s+)?(?:\s+[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ][a-záàâãéèêíïóôõöúçñ]{2,})+)\b/g;
         
         return text.replace(namePattern, (match) => {
             // Verifica se não é uma palavra excluída
             const words = match.split(/\s+/);
-            const isExcluded = words.some(word => excludedWords.has(word));
             
-            if (isExcluded) {
+            // Se qualquer palavra estiver na lista de exclusão, não anonimiza
+            const hasExcludedWord = words.some(word => excludedWords.has(word));
+            if (hasExcludedWord) {
                 return match;
             }
             
-            // Verifica se parece ser um nome (tem pelo menos 2 palavras substantivas)
-            const substantiveWords = words.filter(w => !['da', 'de', 'do', 'das', 'dos', 'e'].includes(w.toLowerCase()));
-            if (substantiveWords.length >= 2) {
+            // Conta palavras substantivas (não preposições)
+            const substantiveWords = words.filter(w => 
+                !['da', 'de', 'do', 'das', 'dos', 'e'].includes(w.toLowerCase())
+            );
+            
+            // Requer pelo menos 2 palavras substantivas para ser considerado nome
+            // E a primeira palavra deve ter pelo menos 3 caracteres
+            if (substantiveWords.length >= 2 && substantiveWords[0].length >= 3) {
                 this.stats.names++;
                 this.replacementMap.set(`NAME-${this.replacementCounter}`, match);
                 this.replacementCounter++;

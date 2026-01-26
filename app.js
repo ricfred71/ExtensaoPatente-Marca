@@ -280,7 +280,7 @@ async function sendToAI(text) {
         return aiMessage;
         
     } catch (error) {
-        if (error.message.includes('Failed to fetch')) {
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error('Não foi possível conectar à API. Verifique se o endpoint está correto e acessível. Para modelos locais (Ollama), certifique-se de que o serviço está rodando.');
         }
         throw error;
