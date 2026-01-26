@@ -1,0 +1,41 @@
+# Arquivos temporários
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+
+# Dependências (se adicionar npm futuramente)
+node_modules/
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+
+# Dados sensíveis - NUNCA commitar
+*.key
+*.pem
+.env
+.env.local
+secrets/
+api-keys.txt
+config.local.js
+
+# Documentos de teste (podem conter dados reais)
+test-docs/
+sample-docs/
+*.pdf
+*.docx
