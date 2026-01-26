@@ -1,0 +1,21 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f6f6f9;
+  color: #222;
+  margin: 0;
+  padding: 24px;
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+h1 {
+  margin-top: 0;
+}
