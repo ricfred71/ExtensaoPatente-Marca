@@ -9,33 +9,46 @@
 node_modules/
 package-lock.json
 yarn.lock
+# Dependencies
+node_modules/
+npm-debug.log*
 
 # IDE
 .vscode/
 .idea/
 *.sublime-*
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Build artifacts
+# Obsidian
+.obsidian/
+
+# Build outputs
 dist/
 build/
-*.min.js
-*.min.css
+*.zip
 
-# Dados sensíveis - NUNCA commitar
-*.key
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Windows shortcuts
+*.lnk
+
+# Chrome extension (packed)
+*.crx
 *.pem
-.env
-.env.local
-secrets/
-api-keys.txt
-config.local.js
 
-# Documentos de teste (podem conter dados reais)
-test-docs/
-sample-docs/
-*.pdf
-*.docx
+# Test files
+test-pdfs/

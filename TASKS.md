@@ -1,4 +1,11 @@
-# 📋 TASKS - IA Análise Jurídica
+O arquivo abaixo contem um projeto que vai ser iniciado do zero. No entanto parte da sulução já existe em D:\Informatica\Extensao_Diversos\BW&Ipas_Projetos\IpasExtensao\auxiliar\guiasCodigos\pdf_2._QUICK_START.md
+
+Abaixo o projeto À ser implementado:
+D:\Informatica\Extensao_Diversos\BW&Ipas_Projetos\IpasExtensao\ExrtensãoPatentesMarca\ExtensaoPatente-Marca\TASKS.md
+
+Se achar que precisa de mais informações ou tem sugestões de arquiteura melhor, pode se manifestar.
+
+ # 📋 TASKS - IA Análise Jurídica
 
 **Projeto:** Extensão Chrome independente para análise de PDFs com IA  
 **Total de Horas Estimadas:** 148 horas  
