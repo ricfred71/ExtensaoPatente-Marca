@@ -117,3 +117,20 @@ peticao_929063775_indeferimento_850240311055
 }
 
 
+
+
+desconhecido_SEM_PROC_generico_generico
+{
+    "categoria": "desconhecido",
+    "confianca": 0,
+    "dadosExtraidos": {
+        "processedAt": "2026-01-27T11:09:05.668Z",
+        "processor": "UnknownPdfProcessor",
+        "textoCompleto": "Retificação por Erro de publicação na Revista da Propriedade Industrial (RPI) - Em Processo de Registro Petição de Marca 850230020979 00000431960681359 17/01/2023 10:25 929026390 Número do Processo: 850230020979 Número da Petição: Dados Gerais Nome: MARIA ISABEL NOGUEIRA CPF/CNPJ/Número INPI: 48835413000112 Endereço: Rua Ivai, 1.107 Cidade: Maringa Estado: PR CEP: 87005.270 Pais: Brasil Natureza Jurídica: Microempresa assim definida em lei e-mail: lemark@lemark.com.br Dados do Procurador/Escritório Nº API: e-mail: sergio@lemark.com.br CPF: 17450717840 Nome: SÉRGIO RIBEIRO LEMOS UF: PR Nº OAB: Procurador: De acordo com orientação da resposta do Fale Conosco - Protocolo: 1089054 Venho por meio desta, solicitar a correção de acordo com a imagem anexada no formulário do pedido de registro de marca do elemento nominativo para \"CORRIDA BEM PARANÁ\", na etapa de exame formal a correção não ocorreu de ofício pelo próprio INPI. Texto da Petição Página 1 de 3\nNome do Arquivo Descrição Anexos PROCURACAO ASSINADA_MARIA ISABEL NOGUEIRA.pdf Procuração Esta petição foi enviado pelo sistema e-Marcas (Verso 4) em 17/01/2023 às 10:25 Declaro, sob as penas da lei, que todas as informações prestadas neste formulário são verdadeiras. A partir de agora, o número 850230020979 identificará a sua petição junto ao INPI. Portanto guarde-o, a fim de que você possa acompanhar na Revista Eletrônica da Propriedade Industrial - RPI (disponível em formato .pdf no portal www.inpi.gov.br) o andamento da sua petição. Contudo, tratando-se de serviço pago, a aceitação da petição está condicionada à confirmação do pagamento da respectiva GRU (Guia de Recolhimento da União), que deverá ter sido efetuado previamente ao envio deste Obrigado por acessar o e-Marcas. Página 2 de 3\nPágina 3 de 3"
+    },
+    "dataProcessamento": "2026-01-27T11:09:05.672Z",
+    "processoRelacionado": "SEM_PROC",
+    "subtipo": "",
+    "tipo": "generico",
+    "urlPdf": "http://172.19.0.14:8888/nuxeo/restAPI/default/edmsAPI/getEDocPdfById?eDocId=47178225"
+}

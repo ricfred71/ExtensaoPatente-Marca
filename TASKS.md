@@ -5,7 +5,7 @@ D:\Informatica\Extensao_Diversos\BW&Ipas_Projetos\IpasExtensao\ExrtensãoPatente
 
 Se achar que precisa de mais informações ou tem sugestões de arquiteura melhor, pode se manifestar.
 
-# 📋 TASKS - IA Análise Jurídica
+ # 📋 TASKS - IA Análise Jurídica
 
 **Projeto:** Extensão Chrome independente para análise de PDFs com IA  
 **Total de Horas Estimadas:** 148 horas  

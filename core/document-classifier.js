@@ -36,6 +36,8 @@ export class DocumentClassifier {
     // 1. Identificar categoria principal
     const categoria = this._identificarCategoria(texto);
     
+    console.log(`[DocumentClassifier] 📋 Categoria detectada: "${categoria}"`);
+    
     // 2. Identificar tipo específico dentro da categoria
     const tipoOriginal = this._identificarTipo(texto, categoria);
     
@@ -48,7 +50,7 @@ export class DocumentClassifier {
     // 5. Mapear categoria para ID
     const categoriaId = categoria === 'pet' ? 'pet' : 
                         categoria === 'doc_oficial' ? 'doc_oficial' : 
-                        'desconhecido';
+                        'categoriaDesconhecida';
     
     console.log(
       `[DocumentClassifier] Classificado: ${categoriaId} > ${tipoId} ` +
@@ -69,54 +71,36 @@ export class DocumentClassifier {
    * @private
    */
   _identificarCategoria(texto) {
-    const textoLower = texto.toLowerCase();
+    // Extrai primeiros 250 caracteres para análise
+    const texto250 = texto.substring(0, 250);
     
-    // Indicadores de documento oficial do INPI
-    const indicadoresDocOficial = [
-      'despacho',
-      'exigência',
-      'notificação',
-      'decisão',
-      'intimação',
-      'parecer técnico',
-      'parecer inpi'
-    ];
+    console.log('[DocumentClassifier] Analisando primeiros 250 caracteres:', texto250);
     
-    // Indicadores de petição
-    const indicadoresPeticao = [
-      'peticao',
-      'petição',
-      'requerente',
-      'procurador',
-      'vem requerer',
-      'vem solicitar',
-      'apresenta'
-    ];
+    // PETIÇÃO: Sequência de 17 dígitos + data (dd/mm/aaaa hh:mm)
+    // Exemplo: 31123252330338563 16/12/2024 12:29
+    const regexPeticao = /\d{17}\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/;
     
-    let scoreDocOficial = 0;
-    let scorePeticao = 0;
+    // DOCUMENTO OFICIAL: Presença de "Processo de registro de marca" OU "Petição de Marca" nos primeiros 250 caracteres
+    const regexDocOficial = /(Processo de registro de marca|Petição de Marca)/i;
     
-    for (const indicador of indicadoresDocOficial) {
-      const regex = new RegExp(indicador, 'gi');
-      const matches = (textoLower.match(regex) || []).length;
-      scoreDocOficial += matches;
+    let categoria = 'categoriaDesconhecida';
+    
+    // 1. Verifica PETIÇÃO primeiro
+    if (regexPeticao.test(texto250)) {
+      categoria = 'pet';
+      console.log('[DocumentClassifier] ✅ CATEGORIA IDENTIFICADA: PETIÇÃO (sequência 17 dígitos + data encontrada)');
+    } 
+    // 2. Se não for petição, verifica DOCUMENTO OFICIAL
+    else if (regexDocOficial.test(texto250)) {
+      categoria = 'doc_oficial';
+      console.log('[DocumentClassifier] ✅ CATEGORIA IDENTIFICADA: DOCUMENTO OFICIAL (strings indicadoras encontradas)');
+    } 
+    // 3. Nenhum padrão reconhecido
+    else {
+      console.log('[DocumentClassifier] ⚠️ CATEGORIA IDENTIFICADA: CATEGORIA DESCONHECIDA (nenhum padrão reconhecido)');
     }
     
-    for (const indicador of indicadoresPeticao) {
-      const regex = new RegExp(indicador, 'gi');
-      const matches = (textoLower.match(regex) || []).length;
-      scorePeticao += matches;
-    }
-    
-    console.log(`[DocumentClassifier] Scores - Petição: ${scorePeticao}, Doc Oficial: ${scoreDocOficial}`);
-    
-    if (scoreDocOficial > scorePeticao) {
-      return 'doc_oficial';
-    } else if (scorePeticao > 0) {
-      return 'pet';
-    } else {
-      return 'desconhecido';
-    }
+    return categoria;
   }
   
   /**
