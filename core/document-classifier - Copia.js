@@ -85,22 +85,19 @@ export class DocumentClassifier {
     
     console.log('[DocumentClassifier] Analisando primeiros 250 caracteres:', texto250);
     
-    // PETIÇÃO: Exatamente 17 dígitos formando uma string inteira (não pode ter mais ou menos dígitos)
-    // Exemplo: 31123252330338563 ou 29409171959441031
-    // (?<!\d) garante que não há dígito antes
-    // (?!\d) garante que não há dígito depois
-    const regexPeticao = /(?<!\d)\d{17}(?!\d)/;
+    // PETIÇÃO: Sequência de 17 dígitos + data (dd/mm/aaaa hh:mm)
+    // Exemplo: 31123252330338563 16/12/2024 12:29
+    const regexPeticao = /\d{17}\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/;
     
     // DOCUMENTO OFICIAL: Presença de "Processo de registro de marca" OU "Petição de Marca" nos primeiros 250 caracteres
-    // OBS: Inclusão da string institucional abaixo vale apenas para documentos de patentes
-    const regexDocOficial = /(Processo de registro de marca|Petição de Marca|SERVIÇO PÚBLICO FEDERAL MINISTÉRIO DO DESENVOLVIMENTO, INDÚSTRIA, COMÉRCIO E SERVIÇOS INSTITUTO NACIONAL DA PROPRIEDADE INDUSTRIAL)/i;
+    const regexDocOficial = /(Processo de registro de marca|Petição de Marca)/i;
     
     let categoria = 'categoriaDesconhecida';
     
     // 1. Verifica PETIÇÃO primeiro
     if (regexPeticao.test(texto250)) {
       categoria = 'pet';
-      console.log('[DocumentClassifier] ✅ CATEGORIA IDENTIFICADA: PETIÇÃO (string de 17 dígitos encontrada)');
+      console.log('[DocumentClassifier] ✅ CATEGORIA IDENTIFICADA: PETIÇÃO (sequência 17 dígitos + data encontrada)');
     } 
     // 2. Se não for petição, verifica DOCUMENTO OFICIAL
     else if (regexDocOficial.test(texto250)) {
@@ -139,31 +136,33 @@ export class DocumentClassifier {
    * @private
    */
   _identificarTipoPeticao(texto) {
-    // CLASSIFICAÇÃO POR TIPO DESABILITADA TEMPORARIAMENTE
-    // Mantemos apenas a categoria (petição/documento oficial).
-    return 'GENERICO';
-
-    /*
-    // LÓGICA ORIGINAL (mantida comentada para referência futura)
+    // MÉTODO 1: Procura variável "tipoPeticao" no código do documento
+    // Padrão esperado: tipoPeticao: "OPOSICAO" ou tipo_da_peticao: "RECURSO_INDEFERIMENTO"
     const patterns = [
       /tipoPeticao[:\s]*["']?([A-Z_]+)["']?/i,
       /tipo[_\s]da[_\s]peticao[:\s]*["']?([A-Z_]+)["']?/i,
       /tipo[:\s]*["']?([A-Z_]+)["']?/i
     ];
-
+    
+    // Testa cada padrão em sequência
     for (const pattern of patterns) {
       const match = texto.match(pattern);
+      // Se encontrou correspondência, extrai e normaliza o tipo
       if (match && match[1]) {
         const tipo = match[1].toUpperCase().replace(/\s+/g, '_');
         console.log(`[DocumentClassifier] Tipo via variável: ${tipo}`);
         return tipo;
       }
     }
-
+    
+    // MÉTODO 2: Fallback - identifica por palavras-chave no texto
+    // Usado quando não há variável explícita de tipo
     console.log('[DocumentClassifier] Usando detecção por palavras-chave...');
-
+    
     const textoLower = texto.toLowerCase();
-
+    
+    // MAPEIA OS 10 TIPOS DO IPAS COM SUAS PALAVRAS-CHAVE ASSOCIADAS
+    // Exemplo: Se encontrar "oposição" ou "oposicao", é OPOSICAO
     const tiposMap = {
       'RECURSO_INDEFERIMENTO': [
         'recurso contra o indeferimento',
@@ -222,7 +221,9 @@ export class DocumentClassifier {
         'junta aos autos'
       ]
     };
-
+    
+    // BUSCA: Procura por tipo mais específico primeiro na ordem do mapa
+    // Para cada tipo, verifica se ALGUMA de suas palavras-chave aparece no texto
     for (const [tipo, palavrasChave] of Object.entries(tiposMap)) {
       for (const palavra of palavrasChave) {
         if (textoLower.includes(palavra)) {
@@ -231,10 +232,10 @@ export class DocumentClassifier {
         }
       }
     }
-
+    
+    // FALLBACK: Se nenhum tipo foi identificado, usa genérico
     console.warn('[DocumentClassifier] Tipo não identificado, usando GENERICO');
     return 'GENERICO';
-    */
   }
   
   /**
@@ -242,13 +243,11 @@ export class DocumentClassifier {
    * @private
    */
   _identificarTipoDocOficial(texto) {
-    // CLASSIFICAÇÃO POR TIPO DE DOCUMENTO OFICIAL DESABILITADA TEMPORARIAMENTE
-    return 'DOC_OFICIAL_GENERICO';
-
-    /*
-    // LÓGICA ORIGINAL (comentada para reativar no futuro)
+    // Converte todo o texto para minúsculas para facilitar busca case-insensitive
     const textoLower = texto.toLowerCase();
-
+    
+    // MAPEIA OS TIPOS DE DOCUMENTOS OFICIAIS COM SUAS PALAVRAS-CHAVE
+    // Documentos emitidos pelo INPI em resposta a petições
     const tiposMap = {
       'DESPACHO_DECISORIO': [
         'despacho decisório',
@@ -275,7 +274,8 @@ export class DocumentClassifier {
         'análise técnica'
       ]
     };
-
+    
+    // BUSCA: Procura por tipo na ordem do mapa
     for (const [tipo, palavrasChave] of Object.entries(tiposMap)) {
       for (const palavra of palavrasChave) {
         if (textoLower.includes(palavra)) {
@@ -284,9 +284,9 @@ export class DocumentClassifier {
         }
       }
     }
-
+    
+    // FALLBACK: Se nenhum tipo específico identificado, retorna tipo genérico
     return 'DOC_OFICIAL_GENERICO';
-    */
   }
   
   /**
@@ -294,19 +294,9 @@ export class DocumentClassifier {
    * @private
    */
   _mapearParaTipoId(tipoOriginal, categoria) {
-    // MAPEAMENTO DE TIPOS DESABILITADO TEMPORARIAMENTE
-    // Apenas retornamos IDs genéricos por categoria.
+    // SE é petição: mapeia tipo de petição para ID padronizado
     if (categoria === 'pet') {
-      return 'pet_generico';
-    } else if (categoria === 'doc_oficial') {
-      return 'doc_oficial_generico';
-    } else {
-      return 'desconhecido';
-    }
-
-    /*
-    // LÓGICA ORIGINAL (comentada para referência futura)
-    if (categoria === 'pet') {
+      // Dicionário de mapeamento: tipo da petição → identificador canônico
       const mapa = {
         'RECURSO_INDEFERIMENTO': 'pet_recurso_indeferimento',
         'OPOSICAO': 'pet_oposicao',
@@ -320,9 +310,13 @@ export class DocumentClassifier {
         'JUNTADA_DOCUMENTO': 'pet_juntada_documento',
         'GENERICO': 'pet_generico'
       };
-
+      
+      // Retorna ID mapeado ou genérico se tipo não encontrado
       return mapa[tipoOriginal] || 'pet_generico';
-    } else if (categoria === 'doc_oficial') {
+    } 
+    // SENÃO se é documento oficial: mapeia tipo de doc oficial para ID padronizado
+    else if (categoria === 'doc_oficial') {
+      // Dicionário de mapeamento: tipo do doc oficial → identificador canônico
       const mapa = {
         'DESPACHO_DECISORIO': 'doc_oficial_despacho_decisorio',
         'NOTIFICACAO_EXIGENCIA': 'doc_oficial_notificacao_exigencia',
@@ -331,12 +325,14 @@ export class DocumentClassifier {
         'PARECER_TECNICO': 'doc_oficial_parecer_tecnico',
         'DOC_OFICIAL_GENERICO': 'doc_oficial_generico'
       };
-
+      
+      // Retorna ID mapeado ou genérico se tipo não encontrado
       return mapa[tipoOriginal] || 'doc_oficial_generico';
-    } else {
+    } 
+    // SENÃO: categoria desconhecida
+    else {
       return 'desconhecido';
     }
-    */
   }
   
   /**

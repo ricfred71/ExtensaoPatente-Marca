@@ -300,8 +300,7 @@ processBtn.addEventListener('click', async () => {
         numeroProcesso: dadosExtraidos?.numeroProcesso || '',
         cpfCnpj: dadosExtraidos?.requerente_cpfCnpjNumINPI || '',
         nomeRequerente: dadosExtraidos?.requerente_nome || '',
-        // Tipo de petição desativado nesta fase
-        tipoPeticao: '',
+        tipoPeticao: classificacao.tipoOriginal,
         
         // Referência ao storage local
         storageKey: storageKey,
@@ -408,12 +407,8 @@ function sleep(ms) {
 }
 
 function formatarTipoDocumento(tipoId) {
-  // FORMATAÇÃO DE TIPO DESABILITADA TEMPORARIAMENTE
-  // Mantemos apenas a categoria; tipificação virá em fase posterior.
-  return 'Tipo não avaliado (fase futura)';
-
-  /*
   const mapa = {
+    // Petições
     'pet_recurso_indeferimento': 'Recurso contra Indeferimento',
     'pet_oposicao': 'Oposição',
     'pet_manifestacao': 'Manifestação',
@@ -425,19 +420,20 @@ function formatarTipoDocumento(tipoId) {
     'pet_cumprimento_exigencia': 'Cumprimento de Exigência',
     'pet_juntada_documento': 'Juntada de Documento',
     'pet_generico': 'Petição Genérica',
-
+    
+    // Documentos oficiais
     'doc_oficial_despacho_decisorio': 'Despacho Decisório',
     'doc_oficial_notificacao_exigencia': 'Notificação de Exigência',
     'doc_oficial_notificacao_oposicao': 'Notificação de Oposição',
     'doc_oficial_intimacao': 'Intimação',
     'doc_oficial_parecer_tecnico': 'Parecer Técnico',
     'doc_oficial_generico': 'Documento Oficial Genérico',
-
+    
+    // Fallback
     'desconhecido': 'Tipo Desconhecido'
   };
-
+  
   return mapa[tipoId] || tipoId;
-  */
 }
 
 // ============================================
