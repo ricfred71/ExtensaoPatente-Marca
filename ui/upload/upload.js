@@ -10,7 +10,7 @@
 
 import { PdfReader } from '../../core/pdf-reader.js';
 import { DocumentClassifier } from '../../core/document-classifier.js';
-import DataExtractor from '../../core/data-extractor.js';
+import { getExtractorForTexto, detectSector } from '../../core/sector-router.js';
 import { SessionManager } from '../../storage/session-manager.js';
 
 // ============================================
@@ -197,8 +197,17 @@ processBtn.addEventListener('click', async () => {
       status: 'classifying'
     });
     
+    // Etapa 3a: Detectar setor
+    const detectedSector = detectSector(resultado.texto, {
+      url: window?.location?.href || '',
+      fileName: selectedFile?.name || ''
+    });
+
+    console.log('[Upload] Setor detectado:', detectedSector);
+
+    // Etapa 3b: Classificar com o setor correto
     const classifier = new DocumentClassifier();
-    const classificacao = classifier.classificar(resultado.texto);
+    const classificacao = classifier.classificar(resultado.texto, detectedSector);
     
     console.log('[Upload] Classificação:', classificacao);
     
@@ -206,50 +215,66 @@ processBtn.addEventListener('click', async () => {
     await sleep(300);
     
     // ========================================
-    // ETAPA 4: Extrair dados estruturados
+    // ETAPA 4: Extrair dados estruturados (por setor)
     // ========================================
     mostrarProgresso('📊 Extraindo dados estruturados...', 75);
-    
+
     let dadosExtraidos = null;
     let storageKey = null;
-    
-    if (classificacao.categoriaId === 'pet') {
+    let sector = detectedSector;
+
+    const extractorInfo = getExtractorForTexto(resultado.texto, {
+      sector: detectedSector,
+      url: window?.location?.href || '',
+      fileName: selectedFile?.name || ''
+    });
+
+    const extractor = extractorInfo.extractor;
+
+    console.log('[Upload] Setor detectado:', sector);
+
+    if (classificacao.categoriaId === 'peticao') {
       // Extrai dados de PETIÇÃO
-      const extractResult = DataExtractor.extrairDadosPeticao(
-        resultado.texto, 
+      const extractResult = extractor.extrairDadosPeticao(
+        resultado.texto,
         classificacao,
         '' // urlPdf - pode ser preenchido se disponível
       );
       dadosExtraidos = extractResult.dados;
       storageKey = extractResult.storageKey;
-      
+
+      if (dadosExtraidos) dadosExtraidos.setor = sector;
+
       console.log('[Upload] Dados de petição extraídos:', {
-        numeroProcesso: dadosExtraidos.numeroProcesso,
-        numeroPeticao: dadosExtraidos.numeroPeticao,
-        requerente: dadosExtraidos.requerente_nome,
+        numeroProcesso: dadosExtraidos?.numeroProcesso,
+        numeroPeticao: dadosExtraidos?.numeroPeticao,
+        requerente: dadosExtraidos?.requerente_nome,
         storageKey
       });
-      
-    } else if (classificacao.categoriaId === 'doc_oficial') {
+
+    } else if (classificacao.categoriaId === 'documento_oficial') {
       // Extrai dados de DOCUMENTO OFICIAL
-      const extractResult = DataExtractor.extrairDadosDocumentoOficial(
+      const extractResult = extractor.extrairDadosDocumentoOficial(
         resultado.texto,
         classificacao,
         '' // urlPdf
       );
       dadosExtraidos = extractResult.dados;
       storageKey = extractResult.storageKey;
-      
+
+      if (dadosExtraidos) dadosExtraidos.setor = sector;
+
       console.log('[Upload] Dados de documento oficial extraídos:', {
-        numeroProcesso: dadosExtraidos.numeroProcesso,
-        tipo: dadosExtraidos.tipo,
+        numeroProcesso: dadosExtraidos?.numeroProcesso,
+        tipo: dadosExtraidos?.tipo,
         storageKey
       });
-      
+
     } else {
       // Categoria desconhecida - cria objeto básico
       storageKey = `documento_desconhecido_${Date.now()}`;
       dadosExtraidos = {
+        setor: sector,
         categoria: 'categoriaDesconhecida',
         tipo: classificacao.tipoId || '',
         subtipo: classificacao.subtipoId || '',
@@ -258,7 +283,7 @@ processBtn.addEventListener('click', async () => {
         dataProcessamento: new Date().toISOString(),
         urlPdf: ''
       };
-      
+
       console.warn('[Upload] Categoria desconhecida - dados básicos salvos');
     }
     
@@ -287,6 +312,7 @@ processBtn.addEventListener('click', async () => {
     
     await sessionManager.atualizar(currentSessionId, {
       documento: {
+        setor: sector,
         nomeArquivo: resultado.nomeArquivo,
         tamanhoBytes: resultado.tamanhoBytes,
         numeroPaginas: resultado.numeroPaginas,
