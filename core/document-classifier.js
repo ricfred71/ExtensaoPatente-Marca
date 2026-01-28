@@ -36,32 +36,27 @@ export class DocumentClassifier {
     console.log(`[DocumentClassifier] Iniciando classificação (${texto.length} caracteres)`);
     
     // ETAPA 1: Identifica categoria principal (PETIÇÃO vs DOCUMENTO OFICIAL)
-    // Esta é a ÚNICA parte que você quer acompanhar, o resto foi comentado
     const categoria = this._identificarCategoria(texto);
     
     console.log(`[DocumentClassifier] 📋 Categoria detectada: "${categoria}"`);
     
-    // ETAPA 2: Identifica tipo específico dentro da categoria detectada
-    // (ex: RECURSO_INDEFERIMENTO, OPOSICAO, etc.)
-    const tipoOriginal = this._identificarTipo(texto, categoria);
+    // ETAPA 2 e 3: Tipo e Subtipo - AINDA NÃO IMPLEMENTADOS
+    // Por enquanto, retornamos strings vazias até implementar a lógica completa
+    const tipoId = '';
+    const subtipoId = '';
     
-    // ETAPA 3: Converte tipo original em ID padronizado
-    // (ex: "OPOSICAO" → "pet_oposicao")
-    const tipoId = this._mapearParaTipoId(tipoOriginal, categoria);
-    
-    // ETAPA 4: Calcula um score de confiança (0-1) baseado em heurísticas
-    // Ajuda a indicar se a classificação é segura ou duvidosa
-    const confianca = this._calcularConfianca(texto, tipoOriginal);
+    // ETAPA 4: Calcula um score de confiança (0-1) baseado na categoria detectada
+    const confianca = categoria === 'categoriaDesconhecida' ? 0.0 : 0.85;
     
     // ETAPA 5: Converte categoria em ID final
-    // Mapeia "pet" → "pet", "doc_oficial" → "doc_oficial", ou desconhecida
     const categoriaId = categoria === 'pet' ? 'pet' : 
                         categoria === 'doc_oficial' ? 'doc_oficial' : 
                         'categoriaDesconhecida';
     
     // LOG: Exibe resultado final da classificação com nível de confiança em %
     console.log(
-      `[DocumentClassifier] Classificado: ${categoriaId} > ${tipoId} ` +
+      `[DocumentClassifier] Classificado: ${categoriaId} ` +
+      `(tipo/subtipo: não implementado) ` +
       `(confiança: ${(confianca * 100).toFixed(0)}%)`
     );
     
@@ -69,9 +64,9 @@ export class DocumentClassifier {
     return {
       categoriaId,
       tipoId,
-      subtipoId: '',
+      subtipoId,
       confianca,
-      tipoOriginal // Mantém tipo do IPAS para compatibilidade
+      tipoOriginal: '' // Vazio até implementar extração de tipo original
     };
   }
   
@@ -117,6 +112,7 @@ export class DocumentClassifier {
   
   /**
    * Identifica tipo específico baseado na categoria
+   * ⚠️ TEMPORARIAMENTE DESATIVADO - Retorna sempre vazio até implementação completa
    * @private
    */
   _identificarTipo(texto, categoria) {
@@ -136,6 +132,7 @@ export class DocumentClassifier {
   
   /**
    * Identifica tipo de petição (REUTILIZA LÓGICA DO IPAS)
+   * ⚠️ TEMPORARIAMENTE DESATIVADO - Aguardando implementação de tipos
    * @private
    */
   _identificarTipoPeticao(texto) {
@@ -239,6 +236,7 @@ export class DocumentClassifier {
   
   /**
    * Identifica tipo de documento oficial do INPI
+   * ⚠️ TEMPORARIAMENTE DESATIVADO - Aguardando implementação de tipos
    * @private
    */
   _identificarTipoDocOficial(texto) {
@@ -291,6 +289,7 @@ export class DocumentClassifier {
   
   /**
    * Mapeia tipo original para ID canônico
+   * ⚠️ TEMPORARIAMENTE DESATIVADO - Retorna sempre string vazia
    * @private
    */
   _mapearParaTipoId(tipoOriginal, categoria) {
@@ -341,6 +340,7 @@ export class DocumentClassifier {
   
   /**
    * Calcula score de confiança baseado em heurísticas
+   * ⚠️ TEMPORARIAMENTE DESATIVADO - Retorna valor fixo baseado na categoria
    * @private
    */
   _calcularConfianca(texto, tipo) {
