@@ -246,9 +246,6 @@ console.log(`Encontrados ${docs.length} documentos para processo ${numeroProcess
    ↓
 5. chrome.storage.local.set()
    → Salva objeto no storage
-   ↓
-6. SessionManager.atualizar()
-   → Atualiza referência na sessão
 ```
 
 ---

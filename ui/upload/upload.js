@@ -11,7 +11,6 @@
 import { PdfReader } from '../../core/pdf-reader.js';
 import { DocumentClassifier } from '../../core/document-classifier.js';
 import { getExtractorForTexto, detectSector } from '../../core/sector-router.js';
-import { SessionManager } from '../../storage/session-manager.js';
 
 // ============================================
 // ELEMENTOS DOM
@@ -155,25 +154,9 @@ processBtn.addEventListener('click', async () => {
     processBtn.disabled = true;
     
     // ========================================
-    // ETAPA 1: Criar sessão
-    // ========================================
-    mostrarProgresso('⚙️ Iniciando processamento...', 5);
-    
-    const sessionManager = new SessionManager();
-    currentSessionId = await sessionManager.criar();
-    
-    console.log('[Upload] Sessão criada:', currentSessionId);
-    
-    await sleep(300); // UX: deixa usuário ver a mensagem
-    
-    // ========================================
-    // ETAPA 2: Extrair texto do PDF
+    // ETAPA 1: Extrair texto do PDF
     // ========================================
     mostrarProgresso('📄 Extraindo texto do PDF...', 20);
-    
-    await sessionManager.atualizar(currentSessionId, {
-      status: 'uploading'
-    });
     
     const pdfReader = new PdfReader();
     const resultado = await pdfReader.loadFromFile(selectedFile);
@@ -189,13 +172,9 @@ processBtn.addEventListener('click', async () => {
     await sleep(300);
     
     // ========================================
-    // ETAPA 3: Classificar documento
+    // ETAPA 2: Classificar documento
     // ========================================
     mostrarProgresso('🔍 Classificando documento...', 60);
-    
-    await sessionManager.atualizar(currentSessionId, {
-      status: 'classifying'
-    });
     
     // Etapa 3a: Detectar setor
     const detectedSector = detectSector(resultado.texto, {
@@ -215,7 +194,7 @@ processBtn.addEventListener('click', async () => {
     await sleep(300);
     
     // ========================================
-    // ETAPA 4: Extrair dados estruturados (por setor)
+    // ETAPA 3: Extrair dados estruturados (por setor)
     // ========================================
     mostrarProgresso('📊 Extraindo dados estruturados...', 75);
 
@@ -291,7 +270,7 @@ processBtn.addEventListener('click', async () => {
     await sleep(300);
     
     // ========================================
-    // ETAPA 5: Salvar no storage local
+    // ETAPA 4: Salvar no storage local
     // ========================================
     mostrarProgresso('💾 Salvando no storage...', 90);
     
@@ -303,46 +282,7 @@ processBtn.addEventListener('click', async () => {
     console.log('[Upload] Dados salvos no storage local com chave:', storageKey);
     
     // ========================================
-    // ETAPA 6: Atualizar sessão
-    // ========================================
-    // ========================================
-    // ETAPA 6: Atualizar sessão
-    // ========================================
-    mostrarProgresso('💾 Atualizando sessão...', 95);
-    
-    await sessionManager.atualizar(currentSessionId, {
-      documento: {
-        setor: sector,
-        nomeArquivo: resultado.nomeArquivo,
-        tamanhoBytes: resultado.tamanhoBytes,
-        numeroPaginas: resultado.numeroPaginas,
-        paginasProcessadas: resultado.paginasProcessadas,
-        textoPeticao: resultado.texto,
-        classificacao: classificacao,
-        metadata: resultado.metadata,
-        
-        // Campos extraídos (se aplicável)
-        numeroPeticao: dadosExtraidos?.numeroPeticao || '',
-        numeroProcesso: dadosExtraidos?.numeroProcesso || '',
-        cpfCnpj: dadosExtraidos?.requerente_cpfCnpjNumINPI || '',
-        nomeRequerente: dadosExtraidos?.requerente_nome || '',
-        // Tipo de petição desativado nesta fase
-        tipoPeticao: '',
-        
-        // Referência ao storage local
-        storageKey: storageKey,
-        dadosProcessados: dadosExtraidos
-      },
-      status: 'completed'
-    });
-    
-    console.log('[Upload] Sessão atualizada');
-    
-    // ========================================
-    // ETAPA 7: Concluído
-    // ========================================
-    // ========================================
-    // ETAPA 7: Concluído
+    // ETAPA 5: Concluído
     // ========================================
     mostrarProgresso('✅ Processamento concluído!', 100);
     await sleep(800);
@@ -403,21 +343,7 @@ processBtn.addEventListener('click', async () => {
       'error'
     );
     
-    // Tenta salvar erro na sessão (se foi criada)
-    if (currentSessionId) {
-      try {
-        const sessionManager = new SessionManager();
-        await sessionManager.atualizar(currentSessionId, {
-          status: 'error',
-          erro: {
-            mensagem: error.message,
-            timestamp: new Date().toISOString()
-          }
-        });
-      } catch (saveError) {
-        console.error('[Upload] Erro ao salvar estado de erro:', saveError);
-      }
-    }
+
     
     // Reabilita botão após erro
     setTimeout(() => {
