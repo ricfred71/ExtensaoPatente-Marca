@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "IA Análise Jurídica - Marcas e Patentes",
-  "version": "1.0.0",
-  "description": "Extensão standalone para análise de PDFs jurídicos com IA e proteção LGPD",
+  "name": "MVP uso de IA para tratar pdfs",
+  "version": "1.1.0",
+  "description": "Extensão standalone para análise de PDFs com IA e proteção LGPD - 29/01/2026",
   
   "icons": {
     "16": "assets/images/icon16.png",

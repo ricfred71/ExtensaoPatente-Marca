@@ -3,7 +3,13 @@
  * 
  * Extrator específico do setor de Marcas.
  * Movido do core para facilitar o split futuro.
+ * 
+ * Agora integrado com o sistema de tipos específicos:
+ * - Para tipos com extractor customizado, delega para o tipo
+ * - Para tipos genéricos, usa a lógica genérica deste arquivo
  */
+
+import { getExtractorForTipo } from './types/index.js';
 
 class DataExtractor {
   
@@ -17,6 +23,21 @@ class DataExtractor {
   extrairDadosPeticao(textoCompleto, classificacao, urlPdf = '') {
     console.log('[DataExtractor] Extraindo dados de PETIÇÃO...');
     
+    // ========================================
+    // VERIFICAR SE EXISTE EXTRACTOR ESPECÍFICO PARA ESTE TIPO
+    // ========================================
+    const extractorEspecifico = getExtractorForTipo(classificacao.tipoId, this);
+    
+    if (extractorEspecifico) {
+      console.log(`[DataExtractor] ✅ Usando extractor específico para tipo: ${classificacao.tipoId}`);
+      return extractorEspecifico.extract(textoCompleto, classificacao, urlPdf);
+    }
+    
+    console.log(`[DataExtractor] ℹ️ Tipo sem extractor específico: ${classificacao.tipoId}. Usando fallback genérico.`);
+    
+    // ========================================
+    // FALLBACK: EXTRAÇÃO GENÉRICA
+    // ========================================
     // Extrai primeira página (primeiros ~2000 caracteres geralmente contém todos os dados principais)
     const textoPaginaUm = textoCompleto.substring(0, 2000);
     
