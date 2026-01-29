@@ -28,8 +28,17 @@ export class MarcasClassifier {
     const categoria = this._identificarCategoria(texto);
     console.log(`[MarcasClassifier] 📋 Categoria detectada: "${categoria}"`);
     
-    // ETAPA 2 e 3: Tipo e Subtipo - ⚠️ DESATIVADOS por enquanto
-    const tipoId = '';
+    // ETAPA 2: Identifica tipo específico baseado na categoria
+    let tipoId = '';
+    if (categoria === 'peticao') {
+      tipoId = this._identificarTipoPeticao(texto);
+      console.log(`[MarcasClassifier] 📝 Tipo de petição: "${tipoId}"`);
+    } else if (categoria === 'documento_oficial') {
+      tipoId = this._identificarTipoDocOficial(texto);
+      console.log(`[MarcasClassifier] 📝 Tipo de doc oficial: "${tipoId}"`);
+    }
+    
+    // ETAPA 3: Subtipo - ⚠️ DESATIVADO por enquanto
     const subtipoId = '';
     
     // ETAPA 4: Calcula confiança
@@ -96,11 +105,22 @@ export class MarcasClassifier {
   
   /**
    * Identifica tipo específico de petição de marca
-   * ⚠️ TEMPORARIAMENTE DESATIVADO
    * @private
    */
   _identificarTipoPeticao(texto) {
-    return 'GENERICO';
+    const texto200 = texto.substring(0, 200).trim();
+    
+    // TIPO 1: Recurso de Indeferimento de Pedido de Registro
+    if (texto200.startsWith('Recurso de patente de invenção, modelo de utilidade ou certificado de adição de invenção')) {
+      console.log('[MarcasClassifier] ✅ TIPO: recursoIndeferimentoPedidoRegistro');
+      return 'recursoIndeferimentoPedidoRegistro';
+    }
+    
+    // Outros tipos serão adicionados aqui no futuro
+    
+    // Tipo genérico (não identificado)
+    console.log('[MarcasClassifier] ℹ️ TIPO: genérico (não identificado)');
+    return '';
   }
   
   /**

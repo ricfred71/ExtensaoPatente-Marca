@@ -31,8 +31,17 @@ export class PatentesClassifier {
     const categoria = this._identificarCategoria(texto);
     console.log(`[PatentesClassifier] 📋 Categoria detectada: "${categoria}"`);
     
-    // ETAPA 2 e 3: Tipo e Subtipo - ⚠️ DESATIVADOS por enquanto
-    const tipoId = '';
+    // ETAPA 2: Identifica tipo específico baseado na categoria
+    let tipoId = '';
+    if (categoria === 'peticao') {
+      tipoId = this._identificarTipoPeticao(texto);
+      console.log(`[PatentesClassifier] 📝 Tipo de petição: "${tipoId}"`);
+    } else if (categoria === 'documento_oficial') {
+      tipoId = this._identificarTipoDocOficial(texto);
+      console.log(`[PatentesClassifier] 📝 Tipo de doc oficial: "${tipoId}"`);
+    }
+    
+    // ETAPA 3: Subtipo - ⚠️ DESATIVADO por enquanto
     const subtipoId = '';
     
     // ETAPA 4: Calcula confiança
@@ -97,20 +106,22 @@ export class PatentesClassifier {
   
   /**
    * Identifica tipo específico de petição de patente
-   * ⚠️ TEMPORARIAMENTE DESATIVADO
    * @private
    */
   _identificarTipoPeticao(texto) {
-    const textoLower = texto.toLowerCase();
+    const texto200 = texto.substring(0, 200).trim();
     
-    // Diferencia entre Patente de Invenção e Modelo de Utilidade (exemplo para futuro)
-    if (textoLower.includes('modelo de utilidade') || textoLower.includes('modelo de utilidade')) {
-      return 'MODELO_UTILIDADE';
-    } else if (textoLower.includes('patente de invenção') || textoLower.includes('patente de invencao')) {
-      return 'PATENTE_INVENCAO';
+    // TIPO 1: Recurso de Indeferimento de Pedido de Registro
+    if (texto200.startsWith('Recurso de patente de invenção, modelo de utilidade ou certificado de adição de invenção')) {
+      console.log('[PatentesClassifier] ✅ TIPO: recursoIndeferimentoPedidoRegistro');
+      return 'recursoIndeferimentoPedidoRegistro';
     }
     
-    return 'PEDIDO_GENERICO';
+    // Outros tipos serão adicionados aqui no futuro
+    
+    // Tipo genérico (não identificado)
+    console.log('[PatentesClassifier] ℹ️ TIPO: genérico (não identificado)');
+    return '';
   }
   
   /**
