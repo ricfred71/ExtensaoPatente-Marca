@@ -14,6 +14,34 @@
  */
 
 export class PatentesClassifier {
+  constructor() {
+    // Regras para identificação de tipos de PETIÇÃO
+    this.regrasPeticao = [
+      {
+        id: 'recursoIndeferimentoPedidoRegistro',
+        descricao: 'Recurso de patente de invenção, modelo de utilidade ou certificado',
+        test: (texto) => {
+          const texto200 = texto.substring(0, 200).trim();
+          return texto200.startsWith('Recurso de patente de invenção, modelo de utilidade ou certificado de adição de invenção');
+        }
+      }
+      // Outros tipos de petição serão adicionados aqui
+    ];
+
+    // Regras para identificação de tipos de DOCUMENTO OFICIAL
+    this.regrasDocOficial = [
+      {
+        id: 'recursoIndeferimentoPedidoRegistro_naoProvido',
+        descricao: 'Recurso conhecido e negado provimento',
+        test: (texto) => {
+          const ultimos400 = texto.substring(Math.max(0, texto.length - 400));
+          return ultimos400.includes('Recurso conhecido e negado provimento. Mantido o indeferimento do pedido');
+        }
+      }
+      // Outros tipos de documento oficial serão adicionados aqui
+    ];
+  }
+
   /**
    * Classifica um documento de patente
    * @param {string} texto - Texto completo do documento
@@ -109,15 +137,12 @@ export class PatentesClassifier {
    * @private
    */
   _identificarTipoPeticao(texto) {
-    const texto200 = texto.substring(0, 200).trim();
+    const regraEncontrada = this.regrasPeticao.find(regra => regra.test(texto));
     
-    // TIPO 1: Recurso de Indeferimento de Pedido de Registro
-    if (texto200.startsWith('Recurso de patente de invenção, modelo de utilidade ou certificado de adição de invenção')) {
-      console.log('[PatentesClassifier] ✅ TIPO: recursoIndeferimentoPedidoRegistro');
-      return 'recursoIndeferimentoPedidoRegistro';
+    if (regraEncontrada) {
+      console.log(`[PatentesClassifier] ✅ TIPO: ${regraEncontrada.id} (${regraEncontrada.descricao})`);
+      return regraEncontrada.id;
     }
-    
-    // Outros tipos serão adicionados aqui no futuro
     
     // Tipo genérico (não identificado)
     console.log('[PatentesClassifier] ℹ️ TIPO: genérico (não identificado)');
@@ -126,11 +151,19 @@ export class PatentesClassifier {
   
   /**
    * Identifica tipo específico de documento oficial de patente
-   * ⚠️ TEMPORARIAMENTE DESATIVADO
    * @private
    */
   _identificarTipoDocOficial(texto) {
-    return 'DOC_OFICIAL_GENERICO';
+    const regraEncontrada = this.regrasDocOficial.find(regra => regra.test(texto));
+    
+    if (regraEncontrada) {
+      console.log(`[PatentesClassifier] ✅ TIPO DOC OFICIAL: ${regraEncontrada.id} (${regraEncontrada.descricao})`);
+      return regraEncontrada.id;
+    }
+    
+    // Tipo genérico (não identificado)
+    console.log('[PatentesClassifier] ℹ️ TIPO DOC OFICIAL: genérico (não identificado)');
+    return '';
   }
 }
 
