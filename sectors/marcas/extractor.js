@@ -9,7 +9,7 @@
  * - Para tipos genéricos, usa a lógica genérica deste arquivo
  */
 
-import { getExtractorForTipo } from './types/index.js';
+import { getExtractorForTipoSync } from './types/index.js';
 
 class DataExtractor {
   
@@ -26,7 +26,7 @@ class DataExtractor {
     // ========================================
     // VERIFICAR SE EXISTE EXTRACTOR ESPECÍFICO PARA ESTE TIPO
     // ========================================
-    const extractorEspecifico = getExtractorForTipo(classificacao.tipoId, this);
+    const extractorEspecifico = getExtractorForTipoSync(classificacao.tipoId, this);
     
     if (extractorEspecifico) {
       console.log(`[DataExtractor] ✅ Usando extractor específico para tipo: ${classificacao.tipoId}`);

@@ -1,13 +1,13 @@
 /**
- * sectors/marcas/types/recurso-indeferimento/extractor.js
+ * sectors/marcas/types/recurso-indef/extractor.js
  * 
  * Extractor específico para: Recurso contra Indeferimento de Pedido de Registro de Marca
  * Reutiliza os métodos de captura genéricos do extractor pai
  */
 
-import { RECURSO_INDEFERIMENTO_SCHEMA, validarRecursoIndeferimento } from './schema.js';
+import { RECURSO_INDEF_SCHEMA, validarRecursoIndef } from './pet_schema.js';
 
-export class RecursoInderimentoExtractor {
+export class RecursoIndefExtractor {
   
   constructor(dataExtractor) {
     /**
@@ -27,7 +27,7 @@ export class RecursoInderimentoExtractor {
    * @returns {Object} { storageKey, dados, validacao }
    */
   extract(textoCompleto, classificacao, urlPdf = '') {
-    console.log('[RecursoInderimentoExtractor] Extraindo dados do Recurso contra Indeferimento...');
+    console.log('[RecursoIndefExtractor] Extraindo dados do Recurso contra Indeferimento...');
     
     // Primeira página (dados estruturais geralmente aqui)
     const textoPaginaUm = textoCompleto.substring(0, 2000);
@@ -69,9 +69,6 @@ export class RecursoInderimentoExtractor {
     // ========================================
     // DADOS ESPECÍFICOS DO TIPO
     // ========================================
-    // Aqui podem ser adicionados dados específicos do Recurso contra Indeferimento
-    // Por enquanto, mantemos a estrutura comum (será expandida em versão futura)
-    
     const dadosEspecificos = {
       form_TextoDaPetição: this._extrairTextoDaPetição(textoCompleto),
       form_Anexos: this._extrairAnexos(textoCompleto)
@@ -80,7 +77,7 @@ export class RecursoInderimentoExtractor {
     // ========================================
     // MONTA OBJETO FINAL
     // ========================================
-    const storageKey = `peticao_${peticao.numeroProcesso}_${this._sanitizeFilename('recurso_indeferimento')}_${peticao.numeroPeticao}`;
+    const storageKey = `peticao_${peticao.numeroProcesso}_${this._sanitizeFilename('recurso_indef')}_${peticao.numeroPeticao}`;
     
     const objetoFinal = {
       // Metadados de classificação
@@ -130,13 +127,13 @@ export class RecursoInderimentoExtractor {
     // ========================================
     // VALIDAÇÃO
     // ========================================
-    const validacao = validarRecursoIndeferimento(objetoFinal);
+    const validacao = validarRecursoIndef(objetoFinal);
     
     if (!validacao.valido) {
-      console.warn('[RecursoInderimentoExtractor] ⚠️ Validação com erros:', validacao.erros);
+      console.warn('[RecursoIndefExtractor] ⚠️ Validação com erros:', validacao.erros);
     }
     
-    console.log('[RecursoInderimentoExtractor] ✅ Dados extraídos:', {
+    console.log('[RecursoIndefExtractor] ✅ Dados extraídos:', {
       storageKey,
       numeroProcesso: peticao.numeroProcesso,
       numeroPeticao: peticao.numeroPeticao,
@@ -178,11 +175,9 @@ export class RecursoInderimentoExtractor {
    * @private
    */
   _extrairTextoDaPetição(texto) {
-    // Padrão: após "Classes objeto do recurso NCL" seguido de dígitos até "Texto da Petição"
-    const match = texto.match(/Classes\s+objeto\s+do\s+recurso\s+NCL[^0-9]*(\d+[\s\S]*?)(?:Texto\s+da\s+Peti[çc][ã a]o|$)/i);
+    const match = texto.match(/Classes\s+objeto\s+do\s+recurso\s+NCL[\d()\s]+([\s\S]*?)Texto\s+da\s+Peti[çc][ãa]o/i);
     
     if (match && match[1]) {
-      // Limpa espaços em branco extras e retorna
       return match[1].trim();
     }
     
@@ -192,80 +187,30 @@ export class RecursoInderimentoExtractor {
   /**
    * Extrai os anexos da petição
    * Localiza tabela com colunas "Descrição" e "Nome do Arquivo"
-   * Entre "Texto da Petição" e "Declaro, sob as penas da lei"
+   * Entre "Nome do Arquivo Descrição Anexos" e "Página|Declaro"
    * @private
    */
   _extrairAnexos(texto) {
-    // Padrão: procura pela seção de anexos
-    const match = texto.match(/Texto\s+da\s+Peti[çc][ã a]o\s*([\s\S]*?)(?:Declaro,?\s+sob\s+as\s+penas\s+da\s+lei|$)/i);
+    const blocoMatch = texto.match(/Nome\s+do\s+Arquivo\s+Descrição\s+Anexos\s*([\s\S]*?)(?:Página|Declaro)/i);
     
-    if (!match || !match[1]) {
+    if (!blocoMatch || !blocoMatch[1]) {
       return [];
     }
     
-    const secaoAnexos = match[1];
-    const anexos = [];
+    let dadosBrutos = blocoMatch[1].trim();
+    dadosBrutos = dadosBrutos.replace(/\n/g, ' ');
     
-    // Procura por padrões de linhas com arquivo e descrição
-    // Padrão típico: "ARQUIVO.pdf Descrição da Razão"
-    // Ou: "Nome Descrição" em colunas separadas
+    const regexLinha = /(.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))\s+(.+?)(?=\s+.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg)|$)/gi;
+    let match;
+    const listaDeAnexos = [];
     
-    // Tenta extrair linhas que contêm .pdf ou outros formatos comuns
-    const linhasArquivos = secaoAnexos.match(/([^\n]*?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))\s+([^\n]*)/gi);
-    
-    if (linhasArquivos) {
-      linhasArquivos.forEach(linha => {
-        // Extrai nome do arquivo e descrição
-        const partes = linha.trim().split(/\s{2,}|\t/); // Divide por espaços duplos ou tabs
-        
-        if (partes.length >= 2) {
-          anexos.push({
-            nomeArquivo: partes[0].trim(),
-            descricao: partes.slice(1).join(' ').trim()
-          });
-        } else if (partes.length === 1) {
-          // Se houver apenas um elemento, trata como nome do arquivo
-          anexos.push({
-            nomeArquivo: partes[0].trim(),
-            descricao: ''
-          });
-        }
+    while ((match = regexLinha.exec(dadosBrutos)) !== null) {
+      listaDeAnexos.push({
+        nomeArquivo: match[1].trim(),
+        descricao: match[3].trim()
       });
     }
     
-    return anexos.length > 0 ? anexos : [];
-  }
-  
-  /**
-   * Extrai a fundamentação do recurso
-   * @private
-   */
-  _extrairFundamentacao(texto) {
-    // Implementar quando necessário
-    // const match = texto.match(/fundamenta[çc][ã a]o[:\s]*([\s\S]*?)(?=pedido|conclusão|$)/i);
-    // return match ? match[1].trim() : null;
-    return null;
-  }
-  
-  /**
-   * Extrai classes recorridas
-   * @private
-   */
-  _extrairClassesRecorridas(texto) {
-    // Implementar quando necessário
-    // const matches = texto.match(/classe[s]?[:\s]*(\d+)/gi);
-    // return matches ? matches.map(m => m.replace(/\D/g, '')) : [];
-    return [];
-  }
-  
-  /**
-   * Extrai valor da causa
-   * @private
-   */
-  _extrairValorCausa(texto) {
-    // Implementar quando necessário
-    // const match = texto.match(/valor[:\s]*(?:R\$\s*)?([\d.,]+)/i);
-    // return match ? match[1] : null;
-    return null;
+    return listaDeAnexos;
   }
 }

@@ -1,11 +1,11 @@
 /**
- * sectors/marcas/types/recurso-indeferimento/schema.js
+ * sectors/marcas/types/recurso-indef/schema.js
  * 
  * Schema do tipo: Recurso contra Indeferimento de Pedido de Registro de Marca
  * Define a estrutura esperada do objeto armazenado no storage
  */
 
-export const RECURSO_INDEFERIMENTO_SCHEMA = {
+export const RECURSO_INDEF_SCHEMA = {
   // ========================================
   // METADADOS DE CLASSIFICAÇÃO
   // ========================================
@@ -216,11 +216,11 @@ export const RECURSO_INDEFERIMENTO_SCHEMA = {
  * @param {Object} objeto - Objeto a validar
  * @returns {Object} { valido: boolean, erros: string[] }
  */
-export function validarRecursoIndeferimento(objeto) {
+export function validarRecursoIndef(objeto) {
   const erros = [];
 
   // Valida campos obrigatórios
-  const obrigatorios = Object.entries(RECURSO_INDEFERIMENTO_SCHEMA)
+  const obrigatorios = Object.entries(RECURSO_INDEF_SCHEMA)
     .filter(([_, def]) => def.required)
     .map(([key, _]) => key);
 
@@ -231,7 +231,7 @@ export function validarRecursoIndeferimento(objeto) {
   }
 
   // Valida tipos
-  for (const [campo, def] of Object.entries(RECURSO_INDEFERIMENTO_SCHEMA)) {
+  for (const [campo, def] of Object.entries(RECURSO_INDEF_SCHEMA)) {
     if (!(campo in objeto)) continue;
 
     const valor = objeto[campo];
