@@ -184,7 +184,6 @@ const objeto = {
   confianca: 0.95,
   
   // Dados da petição
-  tipoPeticao: null,
   form_numeroPeticao: '850240311055',
   form_numeroProcesso: '929063775',
   form_nossoNumero: '12345678901234567',
@@ -213,7 +212,6 @@ const objeto = {
   
   // Texto e metadados
   textoPeticao: '... texto completo do PDF ...',
-  processoRelacionado: '929063775',
   urlPdf: 'http://exemplo.com/pdf.pdf',
   dataProcessamento: '2026-01-29T10:20:52.123Z'
 };

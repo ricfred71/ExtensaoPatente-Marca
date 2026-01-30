@@ -35,13 +35,8 @@ export const RECURSO_INDEF_SCHEMA = {
   },
 
   // ========================================
-  // DADOS DO RECURSO (COMUNS A TODAS AS PETIÇÕES)
+  // DADOS DA PETIÇÃO
   // ========================================
-  tipoPeticao: { 
-    type: 'string', 
-    required: false,
-    description: 'Tipo da petição (pode ser null)'
-  },
   form_numeroPeticao: { 
     type: 'string', 
     required: true,
@@ -191,11 +186,6 @@ export const RECURSO_INDEF_SCHEMA = {
     type: 'string', 
     required: true,
     description: 'Texto completo da petição (não indexável)'
-  },
-  processoRelacionado: { 
-    type: 'string', 
-    required: false,
-    description: 'Processo relacionado ao documento'
   },
   urlPdf: { 
     type: 'string', 

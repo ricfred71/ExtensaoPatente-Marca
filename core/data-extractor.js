@@ -24,8 +24,6 @@ class DataExtractor {
     
     // Extrai dados estruturados
     const peticao = {
-      // Tipo da petição desativado (apenas categoria será usada nesta fase)
-      tipoPeticao: null,
       numeroPeticao: this._extrairNumeroPeticao(textoPaginaUm),
       numeroProcesso: this._extrairNumeroProcesso(textoPaginaUm),
       nossoNumero: this._extrairNossoNumero(textoPaginaUm),
@@ -56,7 +54,7 @@ class DataExtractor {
     };
     
     // Monta objeto final para storage
-    const storageKey = `peticao_${peticao.numeroProcesso}_${this._sanitizeFilename(peticao.tipoPeticao || 'peticao')}_${peticao.numeroPeticao}`;
+    const storageKey = `peticao_${peticao.numeroProcesso}_${this._sanitizeFilename(peticao.numeroPeticao)}`;
     
     const objetoPeticao = {
       // Metadados de classificação
@@ -66,8 +64,6 @@ class DataExtractor {
       confianca: classificacao.confianca || 0,
       
       // Dados da petição (flat structure para facilitar acesso)
-      // Tipo desativado temporariamente
-      tipoPeticao: peticao.tipoPeticao,
       numeroPeticao: peticao.numeroPeticao,
       numeroProcesso: peticao.numeroProcesso,
       nossoNumero: peticao.nossoNumero,
@@ -96,7 +92,6 @@ class DataExtractor {
       
       // Texto completo e metadados
       textoPeticao: textoCompleto,
-      processoRelacionado: peticao.numeroProcesso,
       urlPdf: urlPdf,
       dataProcessamento: new Date().toISOString()
     };
@@ -182,21 +177,6 @@ class DataExtractor {
   // ============================================================
   // MÉTODOS DE EXTRAÇÃO - PETIÇÃO
   // ============================================================
-  
-  /**
-   * Extrai o tipo da petição
-   * Captura do início até "Petição de Marca"
-   */
-  _extrairTipoPeticao(texto) {
-    // DETECÇÃO DE TIPO DESATIVADA — retornando sempre nulo
-    return null;
-
-    /*
-    // LÓGICA ORIGINAL (mantida para referência futura)
-    const match = texto.match(/^(\s\S*?)(?=\bPetição de Marca\b|\d)/);
-    return match ? match[1].trim().replace(/\s+/g, ' ') : null;
-    */
-  }
   
   /**
    * Extrai número da petição (12 dígitos)

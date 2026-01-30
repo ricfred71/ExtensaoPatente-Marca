@@ -2,20 +2,13 @@
  * sectors/marcas/types/recurso-indef/extractor.js
  * 
  * Extractor específico para: Recurso contra Indeferimento de Pedido de Registro de Marca
- * Reutiliza os métodos de captura genéricos do extractor pai
+ * Implementa os métodos de captura específicos do tipo
  */
 
 import { RECURSO_INDEF_SCHEMA, validarRecursoIndef } from './pet_schema.js';
+import { sanitizeFilename } from '../base_extractor_utils.js';
 
 export class RecursoIndefExtractor {
-  
-  constructor(dataExtractor) {
-    /**
-     * Referência ao DataExtractor pai (que possui os métodos de captura genéricos)
-     * @type {DataExtractor}
-     */
-    this.dataExtractor = dataExtractor;
-  }
   
   /**
    * Extrai dados específicos do Recurso contra Indeferimento
@@ -33,37 +26,36 @@ export class RecursoIndefExtractor {
     const textoPaginaUm = textoCompleto.substring(0, 2000);
     
     // ========================================
-    // DADOS COMUNS A TODAS AS PETIÇÕES
+    // DADOS DA PETIÇÃO
     // ========================================
     const peticao = {
-      tipoPeticao: null,
-      numeroPeticao: this.dataExtractor._extrairNumeroPeticao(textoPaginaUm),
-      numeroProcesso: this.dataExtractor._extrairNumeroProcesso(textoPaginaUm),
-      nossoNumero: this.dataExtractor._extrairNossoNumero(textoPaginaUm),
-      dataPeticao: this.dataExtractor._extrairDataPeticao(textoPaginaUm)
+      numeroPeticao: this._extrairNumeroPeticao(textoPaginaUm),
+      numeroProcesso: this._extrairNumeroProcesso(textoPaginaUm),
+      nossoNumero: this._extrairNossoNumero(textoPaginaUm),
+      dataPeticao: this._extrairDataPeticao(textoPaginaUm)
     };
     
     const requerente = {
-      nome: this.dataExtractor._extrairRequerenteNome(textoPaginaUm),
-      cpfCnpjNumINPI: this.dataExtractor._extrairRequerenteCpfCnpjNumINPI(textoPaginaUm),
-      endereco: this.dataExtractor._extrairRequerenteEndereco(textoPaginaUm),
-      cidade: this.dataExtractor._extrairRequerenteCidade(textoPaginaUm),
-      estado: this.dataExtractor._extrairRequerenteEstado(textoPaginaUm),
-      cep: this.dataExtractor._extrairRequerenteCep(textoPaginaUm),
-      pais: this.dataExtractor._extrairRequerentePais(textoPaginaUm),
-      naturezaJuridica: this.dataExtractor._extrairRequerenteNaturezaJuridica(textoPaginaUm),
-      email: this.dataExtractor._extrairRequerenteEmail(textoPaginaUm)
+      nome: this._extrairRequerenteNome(textoPaginaUm),
+      cpfCnpjNumINPI: this._extrairRequerenteCpfCnpjNumINPI(textoPaginaUm),
+      endereco: this._extrairRequerenteEndereco(textoPaginaUm),
+      cidade: this._extrairRequerenteCidade(textoPaginaUm),
+      estado: this._extrairRequerenteEstado(textoPaginaUm),
+      cep: this._extrairRequerenteCep(textoPaginaUm),
+      pais: this._extrairRequerentePais(textoPaginaUm),
+      naturezaJuridica: this._extrairRequerenteNaturezaJuridica(textoPaginaUm),
+      email: this._extrairRequerenteEmail(textoPaginaUm)
     };
     
     const procurador = {
-      nome: this.dataExtractor._extrairProcuradorNome(textoPaginaUm),
-      cpf: this.dataExtractor._extrairProcuradorCpf(textoPaginaUm),
-      email: this.dataExtractor._extrairProcuradorEmail(textoPaginaUm),
-      numeroAPI: this.dataExtractor._extrairProcuradorNumeroAPI(textoPaginaUm),
-      numeroOAB: this.dataExtractor._extrairProcuradorNumeroOAB(textoPaginaUm),
-      uf: this.dataExtractor._extrairProcuradorUF(textoPaginaUm),
-      escritorio_nome: this.dataExtractor._extrairEscritorioNome(textoPaginaUm),
-      escritorio_cnpj: this.dataExtractor._extrairEscritorioCNPJ(textoPaginaUm)
+      nome: this._extrairProcuradorNome(textoPaginaUm),
+      cpf: this._extrairProcuradorCpf(textoPaginaUm),
+      email: this._extrairProcuradorEmail(textoPaginaUm),
+      numeroAPI: this._extrairProcuradorNumeroAPI(textoPaginaUm),
+      numeroOAB: this._extrairProcuradorNumeroOAB(textoPaginaUm),
+      uf: this._extrairProcuradorUF(textoPaginaUm),
+      escritorio_nome: this._extrairEscritorioNome(textoPaginaUm),
+      escritorio_cnpj: this._extrairEscritorioCNPJ(textoPaginaUm)
     };
     
     // ========================================
@@ -77,7 +69,7 @@ export class RecursoIndefExtractor {
     // ========================================
     // MONTA OBJETO FINAL
     // ========================================
-    const storageKey = `peticao_${peticao.numeroProcesso}_${this._sanitizeFilename('recurso_indef')}_${peticao.numeroPeticao}`;
+    const storageKey = `peticao_${peticao.numeroProcesso}_${sanitizeFilename('recurso_indef')}_${peticao.numeroPeticao}`;
     
     const objetoFinal = {
       // Metadados de classificação
@@ -87,7 +79,6 @@ export class RecursoIndefExtractor {
       confianca: classificacao.confianca || 0,
       
       // Dados da petição
-      tipoPeticao: peticao.tipoPeticao,
       form_numeroPeticao: peticao.numeroPeticao,
       form_numeroProcesso: peticao.numeroProcesso,
       form_nossoNumero: peticao.nossoNumero,
@@ -116,7 +107,6 @@ export class RecursoIndefExtractor {
       
       // Texto completo e metadados
       textoPeticao: textoCompleto,
-      processoRelacionado: peticao.numeroProcesso,
       urlPdf: urlPdf,
       dataProcessamento: new Date().toISOString(),
       
@@ -148,22 +138,220 @@ export class RecursoIndefExtractor {
     };
   }
   
+  // ========================================
+  // MÉTODOS DE EXTRAÇÃO - PETIÇÃO
+  // ========================================
+  
   /**
-   * Sanitiza filename removendo caracteres inválidos
-   * @private
+   * Extrai número da petição (12 dígitos)
    */
-  _sanitizeFilename(nome) {
-    return nome
-      .toLowerCase()
-      .replace(/[àáâãäå]/g, 'a')
-      .replace(/[èéêë]/g, 'e')
-      .replace(/[ìíîï]/g, 'i')
-      .replace(/[òóôõö]/g, 'o')
-      .replace(/[ùúûü]/g, 'u')
-      .replace(/[ç]/g, 'c')
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_|_$/g, '');
+  _extrairNumeroPeticao(texto) {
+    const matchPeticaoDeMarca = texto.match(/\bPeti[cç][ãa]o\s+de\s+Marca\s+(\d{12})\b/i);
+    if (matchPeticaoDeMarca) return matchPeticaoDeMarca[1];
+    
+    const matchDepoisLabel = texto.match(/N[úu]mero\s+da\s+Peti[cç][ãa]o\s*:\s*(\d{12})\b/);
+    if (matchDepoisLabel) return matchDepoisLabel[1];
+    
+    const matchAntes = texto.match(/(\d{12})\s*(?=N[úu]mero\s+da\s+Peti[cç][ãa]o)/);
+    if (matchAntes) return matchAntes[1];
+    
+    const matchPrimeiro = texto.match(/\b(\d{12})\b/);
+    return matchPrimeiro ? matchPrimeiro[1] : null;
   }
+  
+  /**
+   * Extrai número do processo (9 dígitos)
+   */
+  _extrairNumeroProcesso(texto) {
+    const matchDepoisLabel = texto.match(/N[úu]mero\s+do\s+Processo\s*:\s*(\d{9})\b/);
+    if (matchDepoisLabel) return matchDepoisLabel[1];
+    
+    const matchAposDataHora = texto.match(/\b\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+(\d{9})\s+N[úu]mero\s+do\s+Processo\b/);
+    if (matchAposDataHora) return matchAposDataHora[1];
+    
+    const matchAntes = texto.match(/(\d{9})\s*(?=N[úu]mero\s+do\s+Processo)/);
+    if (matchAntes) return matchAntes[1];
+    
+    const matchPrimeiro = texto.match(/\b(\d{9})\b/);
+    return matchPrimeiro ? matchPrimeiro[1] : null;
+  }
+  
+  /**
+   * Extrai nosso número (17 dígitos)
+   */
+  _extrairNossoNumero(texto) {
+    const match = texto.match(/\b((?:\d\.?){17})\b/);
+    if (!match) return null;
+    return match[1].replace(/\./g, '');
+  }
+  
+  /**
+   * Extrai data e hora da petição
+   */
+  _extrairDataPeticao(texto) {
+    const regex = /(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2})|(\d{2}:\d{2})\s*(\d{2}\/\d{2}\/\d{4})/;
+    const match = texto.match(regex);
+    if (!match) return null;
+    
+    if (match[1] && match[2]) return `${match[1]} ${match[2]}`;
+    if (match[3] && match[4]) return `${match[4]} ${match[3]}`;
+    
+    return null;
+  }
+  
+  /**
+   * Extrai nome do requerente
+   */
+  _extrairRequerenteNome(texto) {
+    const match = texto.match(/Nome(?:\s*\/\s*Raz[ãa]o\s+Social)?\s*:\s*(.*?)\s*(?=CPF\/CNPJ\/N[úu]mero\s+INPI\s*:)/s);
+    return match ? match[1].trim().replace(/\s+/g, ' ') : null;
+  }
+  
+  /**
+   * Extrai CPF/CNPJ/Número INPI do requerente
+   */
+  _extrairRequerenteCpfCnpjNumINPI(texto) {
+    const match = texto.match(
+      /CPF\/CNPJ\/N[úu]mero\s+INPI\s*:\s*(.*?)(?=\s*(?:Endere[cç]o|Cidade|Estado|CEP|Pa[ií]s|Natureza\s+Jur[íi]dica|(?:e-?mail|email)|Dados\s+Gerais|Dados\s+do\s+Procurador\/Escrit[óo]rio)\b)/is
+    );
+    if (!match) return null;
+    const value = match[1].trim();
+    return value.length > 0 ? value : null;
+  }
+  
+  /**
+   * Extrai endereço do requerente
+   */
+  _extrairRequerenteEndereco(texto) {
+    const match = texto.match(/Endereço:\s*(.*?)(?=\s*Cidade:)/s);
+    return match ? match[1].trim() : null;
+  }
+  
+  /**
+   * Extrai cidade do requerente
+   */
+  _extrairRequerenteCidade(texto) {
+    const match = texto.match(/Cidade:\s*(.*?)(?=\s*Estado:)/s);
+    const cidade = match ? match[1].trim() : null;
+    return cidade && cidade.length > 0 ? cidade : null;
+  }
+  
+  /**
+   * Extrai estado/UF do requerente
+   */
+  _extrairRequerenteEstado(texto) {
+    const match = texto.match(/Estado:\s*(.*?)(?=\s*CEP:)/s);
+    const estado = match ? match[1].trim() : null;
+    return estado && estado.length > 0 ? estado : null;
+  }
+  
+  /**
+   * Extrai CEP do requerente
+   */
+  _extrairRequerenteCep(texto) {
+    const match = texto.match(/CEP:\s*(.*?)(?=\s*Pais:)/s);
+    const cep = match ? match[1].trim() : null;
+    return cep && cep.length > 0 ? cep : null;
+  }
+  
+  /**
+   * Extrai país do requerente
+   */
+  _extrairRequerentePais(texto) {
+    const match = texto.match(/Pa[ií]s\s*:\s*(.*?)(?=\s*Natureza\s+Jur[íi]dica\s*:)/s);
+    return match ? match[1].trim() : null;
+  }
+  
+  /**
+   * Extrai natureza jurídica do requerente
+   */
+  _extrairRequerenteNaturezaJuridica(texto) {
+    const match = texto.match(/Natureza\s+Jur[íi]dica\s*:\s*(.*?)(?=\s*(?:e-?mail|email)\s*:)/is);
+    return match ? match[1].trim() : null;
+  }
+  
+  /**
+   * Extrai e-mail do requerente
+   */
+  _extrairRequerenteEmail(texto) {
+    const match = texto.match(/(?:e-?mail|email)\s*:\s*([\w.\-]+@[\w.\-]+)/i);
+    return match ? match[1].trim() : null;
+  }
+  
+  // ============================================================
+  // MÉTODOS DE EXTRAÇÃO - PROCURADOR
+  // ============================================================
+  
+  /**
+   * Extrai CPF do procurador
+   */
+  _extrairProcuradorCpf(texto) {
+    const match = texto.match(/CPF\s*:\s*([\d.\-]{11,})/);
+    if (!match) return null;
+    const digits = match[1].replace(/\D/g, '');
+    return digits.length === 11 ? digits : null;
+  }
+  
+  /**
+   * Extrai nome do procurador
+   */
+  _extrairProcuradorNome(texto) {
+    const match = texto.match(/CPF\s*:\s*[\d.\-]{11,}\s*Nome\s*:\s*(.*?)(?=\s*UF\s*:)/s);
+    return match ? match[1].trim().replace(/\s+/g, ' ') : null;
+  }
+  
+  /**
+   * Extrai UF do procurador
+   */
+  _extrairProcuradorUF(texto) {
+    const match = texto.match(/UF\s*:\s*(\w{2})/);
+    return match ? match[1] : null;
+  }
+  
+  /**
+   * Extrai número OAB do procurador
+   */
+  _extrairProcuradorNumeroOAB(texto) {
+    const match = texto.match(/N[ºo°]\s*OAB\s*:\s*(\d[\d\s]{0,15})/);
+    if (!match) return null;
+    const value = match[1].trim().replace(/\s+/g, '');
+    return value.length > 0 ? value : null;
+  }
+  
+  /**
+   * Extrai número API do procurador
+   */
+  _extrairProcuradorNumeroAPI(texto) {
+    const match = texto.match(/N[ºo°]\s*API\s*:\s*(.*?)(?=\s*(?:e-?mail|email)\s*:)/is);
+    const api = match ? match[1].trim() : null;
+    return api && api.length > 0 ? api : null;
+  }
+  
+  /**
+   * Extrai e-mail do procurador
+   */
+  _extrairProcuradorEmail(texto) {
+    const match = texto.match(/N[ºo°]\s*API\s*:.*?(?:e-?mail|email)\s*:\s*([\w.\-]+@[\w.\-]+)/is);
+    return match ? match[1].trim() : null;
+  }
+  
+  /**
+   * Extrai CNPJ do escritório
+   */
+  _extrairEscritorioCNPJ(texto) {
+    const match = texto.match(/Dados do Procurador\/Escritório\s*(\d{14})/);
+    return match ? match[1] : null;
+  }
+  
+  /**
+   * Extrai nome do escritório
+   */
+  _extrairEscritorioNome(texto) {
+    const match = texto.match(/\d{14}\s*CNPJ\s*:\s*Nome\s*:\s*(.*?)(?=\s*N[ºo°]\s*API\s*:)/s);
+    return match ? match[1].trim().replace(/\s+/g, ' ') : null;
+  }
+  
+  
   
   // ========================================
   // MÉTODOS ESPECÍFICOS DO TIPO: RECURSO INDEFERIMENTO
@@ -178,7 +366,12 @@ export class RecursoIndefExtractor {
     const match = texto.match(/Classes\s+objeto\s+do\s+recurso\s+NCL[\d()\s]+([\s\S]*?)Texto\s+da\s+Peti[çc][ãa]o/i);
     
     if (match && match[1]) {
-      return match[1].trim();
+      let textoExtraido = match[1].trim();
+      // Remove "Página X de Y" do início
+      textoExtraido = textoExtraido.replace(/^Página\s+\d+\s+de\s+\d+\s*\n?\s*/i, '');
+      // Remove "À" ou "A" do início se presente
+      textoExtraido = textoExtraido.replace(/^[ÀA]\s+/i, '');
+      return textoExtraido.trim();
     }
     
     return null;

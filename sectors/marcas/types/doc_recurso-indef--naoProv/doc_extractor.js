@@ -58,7 +58,6 @@ export class DocRecursoIndefNaoProvExtractor {
       
       // Metadados gerais
       textoCompleto: textoCompleto,
-      processoRelacionado: numeroProcesso,
       urlPdf: urlPdf,
       dataProcessamento: new Date().toISOString(),
       processor: this.constructor.name

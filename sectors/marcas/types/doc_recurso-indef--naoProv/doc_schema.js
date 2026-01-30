@@ -36,7 +36,6 @@ export const DOC_RECURSO_INDEF_NAO_PROV_SCHEMA = {
   
   // Metadados gerais
   textoCompleto: { type: 'string', required: true },
-  processoRelacionado: { type: 'string', required: true },
   urlPdf: { type: 'string', required: false },
   dataProcessamento: { type: 'string', required: true },
   processor: { type: 'string', required: false }
@@ -56,7 +55,7 @@ export function validarDocRecursoIndefNaoProv(dados) {
   const camposObrigatorios = [
     'categoria', 'tipo', 'confianca', 'numeroProcesso', 
     'dataDespacho', 'tipoDespacho', 'textoDespacho', 
-    'decisao', 'textoCompleto', 'processoRelacionado', 'dataProcessamento'
+    'decisao', 'textoCompleto', 'dataProcessamento'
   ];
   
   for (const campo of camposObrigatorios) {
