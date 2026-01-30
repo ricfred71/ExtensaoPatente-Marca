@@ -89,6 +89,18 @@ class DataExtractor {
    */
   extrairDadosDocumentoOficial(textoCompleto, classificacao, urlPdf = '') {
     console.log('[DataExtractor] Extraindo dados de DOCUMENTO OFICIAL...');
+
+    // ========================================
+    // VERIFICAR SE EXISTE EXTRACTOR ESPECÍFICO PARA ESTE TIPO
+    // ========================================
+    const extractorEspecifico = getExtractorForTipoSync(classificacao.tipoId, this);
+
+    if (extractorEspecifico) {
+      console.log(`[DataExtractor] ✅ Usando extractor específico para tipo: ${classificacao.tipoId}`);
+      return extractorEspecifico.extract(textoCompleto, classificacao, urlPdf);
+    }
+
+    console.log(`[DataExtractor] ℹ️ Tipo sem extractor específico: ${classificacao.tipoId}. Usando fallback genérico.`);
     
     let numeroProcesso = null;
     const matchProcesso = textoCompleto.match(/Processo\s+(\d{9})/i);

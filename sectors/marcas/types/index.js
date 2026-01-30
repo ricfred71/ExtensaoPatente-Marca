@@ -14,6 +14,7 @@ import { TIPOS_PETICAO, TIPOS_DOCUMENTOS_OFICIAIS, getTipo } from './tipos-map.j
 
 // Importações dos tipos implementados (para backward compatibility)
 import { RecursoIndefExtractor } from './pet_recurso-indef/pet_extractor.js';
+import { DocRecursoIndefNaoProvExtractor } from './doc_recurso-indef--naoProv/doc_extractor.js';
 import { identificarRecursoIndef } from './pet_recurso-indef/pet_classifier.js';
 import { RECURSO_INDEF_SCHEMA, validarRecursoIndef } from './pet_recurso-indef/pet_schema.js';
 
@@ -27,6 +28,18 @@ const TYPE_EXTRACTORS_MAP = {
     ExtractorClass: RecursoIndefExtractor,
     categoria: 'peticao',
     folder: 'pet_recurso-indef'
+  },
+
+  // Documentos oficiais
+  'recursoIndeferimentoNaoProvido': {
+    ExtractorClass: DocRecursoIndefNaoProvExtractor,
+    categoria: 'documento_oficial',
+    folder: 'doc_recurso-indef--naoProv'
+  },
+  'recursoIndeferimentoPedidoRegistro_naoProvido': {
+    ExtractorClass: DocRecursoIndefNaoProvExtractor,
+    categoria: 'documento_oficial',
+    folder: 'doc_recurso-indef--naoProv'
   }
   
   // Próximos tipos de petição:

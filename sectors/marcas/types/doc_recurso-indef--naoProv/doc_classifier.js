@@ -11,6 +11,7 @@
  */
 export function identificarDocRecursoIndefNaoProv(textoCompleto) {
   const texto = textoCompleto.toLowerCase();
+  //ajustar conforme casos reais de despqachos
   const patterns = [
     /recurso\s+n[ãa]o\s+provido/i,
     /recurso\s+administrativo.*?n[ãa]o\s+provido/i,
@@ -34,7 +35,7 @@ export function identificarDocRecursoIndefNaoProv(textoCompleto) {
   return {
     isMatch,
     tipoId: 'recursoIndeferimentoNaoProvido',
-    descricao: 'Despacho: Recurso contra Indeferimento - Não Provido',
+    descricao: 'Recurso não provido. Decisão mantida',
     confidence: Math.round(confidence),
     patternsMatched
   };
