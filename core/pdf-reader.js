@@ -9,10 +9,13 @@
  * - Remove dependências do background script
  * - Classe ao invés de função exportada
  * - Mantém proteções de memória do original
+ * - Usa PdfTextFormatter para preservar quebras de linha (v2.0)
  * 
- * @version 1.0.0
+ * @version 2.0.0
  * @migrated 26/01/2026
  */
+
+import { PdfTextFormatter } from '../utils/pdf-text-formatter.js';
 
 // Cache do PDF.js
 let pdfjsLib;
@@ -114,7 +117,8 @@ export class PdfReader {
         try {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(" ");
+          // Usa formatter para preservar quebras de linha
+          const pageText = PdfTextFormatter.formatWithLineBreaks(textContent.items);
           textoCompleto += pageText + "\n";
           
           // Libera recursos da página
@@ -163,13 +167,12 @@ export class PdfReader {
           "\n\n[AVISO: Texto truncado devido ao tamanho]";
       }
       
-      // 10. Normalizar texto (mantém quebras de linha)
-      const textoNormalizado = textoCompleto
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n")
-        .replace(/[\t\f\v ]+/g, " ")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
+      // 10. Normalizar texto usando formatter (mantém quebras de linha)
+      const textoNormalizado = PdfTextFormatter.normalize(
+        textoCompleto
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n")
+      );
       
       console.log(
         `[PdfReader] ✅ Extração concluída: ${textoNormalizado.length} caracteres, ` +
