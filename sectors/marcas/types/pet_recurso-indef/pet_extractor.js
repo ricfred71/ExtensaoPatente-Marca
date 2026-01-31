@@ -122,7 +122,7 @@ export class RecursoIndefExtractor {
       // Dados específicos do tipo
       //representa o campo do furmulario "Texto da Petição" - onde é posto um resumo do recurso
       form_TextoDaPetição: dadosEspecificos.form_TextoDaPetição || null,
-      form_Anexos: dadosEspecificos.form_Anexos || []
+      form_Anexos: peticao.form_Anexos || []
     };
     
     // ========================================
@@ -390,31 +390,79 @@ export class RecursoIndefExtractor {
   
   /**
    * Extrai os anexos da petição
-   * Localiza tabela com colunas "Descrição" e "Nome do Arquivo"
-   * Entre "Nome do Arquivo Descrição Anexos" e "Página|Declaro"
+   * Localiza tabela com colunas "Nome do Arquivo" e "Descrição"
+   * Entre "Nome do Arquivo Descrição" e "Declaro, sob as penas da lei,"
+   * Formato pode ser: nome.ext + tipo na mesma linha OU nome.ext em uma linha e tipo na próxima
    * @private
    */
   _extrairAnexos(texto) {
-    const blocoMatch = texto.match(/Nome\s+do\s+Arquivo\s+Descrição\s+Anexos\s*([\s\S]*?)(?:Página|Declaro)/i);
+    console.log('[_extrairAnexos] Iniciando extração de anexos...');
+    
+    const blocoMatch = texto.match(/Nome\s+do\s+Arquivo\s+Descrição\s*(?:\n\s*)?Anexos\s*([\s\S]*?)Declaro,\s+sob\s+as\s+penas\s+da\s+lei,/i);
     
     if (!blocoMatch || !blocoMatch[1]) {
+      console.log('[_extrairAnexos] ❌ Bloco não encontrado');
       return [];
     }
     
-    let dadosBrutos = blocoMatch[1].trim();
-    dadosBrutos = dadosBrutos.replace(/\n/g, ' ');
+    console.log('[_extrairAnexos] ✅ Bloco encontrado');
     
-    const regexLinha = /(.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))\s+(.+?)(?=\s+.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg)|$)/gi;
-    let match;
+    let linhas = blocoMatch[1].trim().split('\n').filter(linha => linha.trim());
+    
+    // Remove linhas que são "Página X" ou "Esta petição..."
+    linhas = linhas.filter(linha => {
+      const limpa = linha.trim();
+      return !/^Página\s+\d+/i.test(limpa) && !/^Esta\s+peti[çc][ãa]o/i.test(limpa);
+    });
+    
+    console.log('[_extrairAnexos] Total de linhas após filtro:', linhas.length);
+    
     const listaDeAnexos = [];
+    let i = 0;
     
-    while ((match = regexLinha.exec(dadosBrutos)) !== null) {
-      listaDeAnexos.push({
-        nomeArquivo: match[1].trim(),
-        descricao: match[3].trim()
-      });
+    while (i < linhas.length) {
+      let linha = linhas[i].trim();
+      console.log(`[_extrairAnexos] Processando linha ${i}:`, linha);
+      
+      // Se a linha já tem extensão + texto depois (formato: "nome.ext Tipo")
+      const matchMesmaLinha = linha.match(/^(.*?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))\s+(.+)$/i);
+      if (matchMesmaLinha) {
+        console.log(`[_extrairAnexos] ✅ Nome e tipo na mesma linha - Nome: "${matchMesmaLinha[1]}", Tipo: "${matchMesmaLinha[3]}"`);
+        listaDeAnexos.push({
+          'Nome': matchMesmaLinha[1].trim(),
+          'Tipo Anexo': matchMesmaLinha[3].trim()
+        });
+        i++;
+        continue;
+      }
+      
+      // Se não, junta linhas até formar nome completo
+      let nomeArquivo = linha;
+      while (i < linhas.length - 1 && !/\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg)$/i.test(nomeArquivo)) {
+        i++;
+        nomeArquivo += ' ' + linhas[i].trim();
+        console.log(`[_extrairAnexos] Juntando, linha ${i}. Arquivo agora:`, nomeArquivo);
+      }
+      
+      // Próxima linha é a descrição
+      i++;
+      if (i < linhas.length) {
+        const tipoAnexo = linhas[i].trim();
+        console.log(`[_extrairAnexos] ✅ Nome e tipo em linhas separadas - Nome: "${nomeArquivo}", Tipo: "${tipoAnexo}"`);
+        
+        listaDeAnexos.push({
+          'Nome': nomeArquivo,
+          'Tipo Anexo': tipoAnexo
+        });
+        
+        i++; // Avança para o próximo par
+      } else {
+        console.log(`[_extrairAnexos] ⚠️ Nome de arquivo sem tipo: "${nomeArquivo}"`);
+        break;
+      }
     }
     
+    console.log('[_extrairAnexos] Total de anexos extraídos:', listaDeAnexos.length);
     return listaDeAnexos;
   }
 }

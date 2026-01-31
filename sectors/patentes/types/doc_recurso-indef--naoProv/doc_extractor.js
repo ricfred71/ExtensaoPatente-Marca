@@ -37,29 +37,29 @@ export class DocRecursoIndefNaoProvExtractor {
       subtipo: classificacao.subtipoId || '',
       confianca: classificacao.confianca || 0,
 
-      //Dados INPI
+      // Dados do cabeçalho do documento
+      form_numeroProcesso: numeroProcesso || null,
+      form_numeroPct: this._extrairNumeroPct(textoDocOficial) || null,
+      form_dataDeposito: this._extrairDataDeposito(textoDocOficial) || null,
+      form_prioridadeUnionista: this._extrairPrioridadeUnionista(textoDocOficial) || null,
+      form_requerente_nome: this._extrairRequerentNome(textoDocOficial) || null,
+      form_inventor_nome: this._extrairInventorNome(textoDocOficial) || null,
+      form_titulo: this._extrairTitulo(textoDocOficial) || null,
+      
+      // Dados INPI
       textoAutomaticoEtapa1: this._extrairTextoAutomaticoEtapa1(textoDocOficial) || null,
       textoAutomaticoEtapa2: this._extrairTextoAutomaticoEtapa2(textoDocOficial) || null,
       
       // Identificação
-      numeroProcesso: numeroProcesso || null,
       dataDespacho: dataDespacho || null,
-      nomePeticao: this._extrairNomePeticao(textoDocOficial) || null,
-      numeroProtocolo: this._extrairNumeroProtocolo(textoDocOficial) || null,
-      dataApresentacao: this._extrairDataApresentacao(textoDocOficial) || null,
-      requerente: this._extrairRequerente(textoDocOficial) || null,
       dataNotificacaoIndeferimento: this._extrairDataNotificacaoIndeferimento(textoDocOficial) || null,
       nomeDecisao: this._extrairNomeDecisao(textoDocOficial) || null,
-      dataParecer: this._extrairDataParecer(textoDocOficial) || null,
-      numeroParecer: this._extrairNumeroParecer(textoDocOficial) || null,
       textoParecer: this._extrairTextoParecer(textoDocOficial) || null,
       tecnico: this._extrairTecnico(textoDocOficial) || null,
       
       // Dados do despacho
       tipoDespacho: 'Recurso não provido',
-      
-      // Fundamentação legal
-      artigosInvocados: this._extrairArtigosInvocados(textoDocOficial) || [],
+      form_decisao: this._extrairDecisao(textoDocOficial) || null,
       
       // Decisão
       decisao: 'indeferido_mantido',
@@ -99,196 +99,315 @@ export class DocRecursoIndefNaoProvExtractor {
   // MÉTODOS DE EXTRAÇÃO
   // ========================================
   
+  /**
+   * Extrai número do processo (pedido de patente)
+   * Formato: BR1020140042067
+   */
   _extrairNumeroProcesso(texto) {
-    // Padrão específico para patentes: BR + números
-    const matchBR = texto.match(/(?:Pedido|Processo)\s+(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/i);
-    if (matchBR) return matchBR[1].replace(/\s+/g, '');
+    const match = texto.match(/N\.°\s+do\s+Pedido\s*:\s*(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/i);
+    if (match) {
+      return match[1].replace(/\s+/g, '');
+    }
+    return null;
+  }
+
+ /**
+   * Extrai número de depósito PCT
+   * Correção: Adicionado lookahead para parar antes de "Data de Depósito"
+   */
+  _extrairNumeroPct(texto) {
+    console.log('[_extrairNumeroPct] Iniciando extração...');
     
-    // Fallback para formato legado
-    const match = texto.match(/Processo\s+(\d{9})/i);
-    if (match) return match[1];
+    // ALTERAÇÃO NA REGEX:
+    // 1. ([^\n]*?) -> Captura tudo que não seja quebra de linha (modo preguiçoso)
+    // 2. (?=\s*(?:\n|Data\s+de\s+Depósito|$)) -> Lookahead (regra de parada). 
+    //    Para a captura IMEDIATAMENTE antes de encontrar:
+    //    - Uma quebra de linha (\n)
+    //    - OU o texto "Data de Depósito" (mesmo que esteja na mesma linha)
+    //    - OU o fim do texto ($)
+    const match = texto.match(/N\.°\s+de\s+Depósito\s+PCT\s*:\s*([^\n]*?)(?=\s*(?:\n|Data\s+de\s+Depósito|$))/i);
     
-    const matchPrimeiro = texto.match(/\b(\d{9})\b/);
-    return matchPrimeiro ? matchPrimeiro[1] : null;
+    console.log('[_extrairNumeroPct] Match encontrado:', !!match);
+    
+    if (match) {
+      // match[1] contém o valor capturado
+      let valor = match[1].trim();
+      console.log('[_extrairNumeroPct] Valor após trim:', JSON.stringify(valor));
+      
+      // Verificações de segurança:
+      // 1. Se o valor é vazio
+      // 2. Se contém apenas traços ou espaços
+      // 3. (Segurança extra) Se por acaso ainda contiver "Data de Depósito"
+      if (valor.length === 0 || /^[-\s]*$/.test(valor) || valor.toLowerCase().startsWith("data de")) {
+        console.log('[_extrairNumeroPct] Retornando null (vazio, traço ou campo inválido)');
+        return null;
+      }
+      
+      console.log('[_extrairNumeroPct] Retornando valor:', valor);
+      return valor;
+    }
+    
+    console.log('[_extrairNumeroPct] Nenhum match encontrado, retornando null');
+    return null;
+  }
+
+  /**
+   * Extrai data de depósito
+   */
+  _extrairDataDeposito(texto) {
+    const match = texto.match(/Data\s+de\s+Depósito\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Extrai prioridade unionista
+   */
+  _extrairPrioridadeUnionista(texto) {
+    const match = texto.match(/Prioridade\s+Unionista\s*:\s*(.+?)(?:\n|$)/i);
+    if (match) {
+      const valor = match[1].trim();
+      // Retorna null se vazio ou se for apenas "-" ou caracteres não alfanuméricos
+      if (valor.length === 0 || /^[-\s]*$/.test(valor)) {
+        return null;
+      }
+      return valor;
+    }
+    return null;
+  }
+
+  /**
+   * Extrai nome do requerente (depositante)
+   */
+  _extrairRequerentNome(texto) {
+    const match = texto.match(/Depositante\s*:\s*([\s\S]+?)(?=\n\s*Inventor\s*:|\n\s*[A-Z][a-z]+\s*:)/i);
+    if (match) {
+      let nome = match[1].trim();
+      // Remove sufixo como (BRSP)
+      nome = nome.replace(/\s*\([A-Z]+\)\s*$/g, '').trim();
+      return nome.length > 0 ? nome : null;
+    }
+    return null;
+  }
+
+  /**
+   * Extrai nome do inventor
+   */
+  _extrairInventorNome(texto) {
+    const match = texto.match(/Inventor\s*:\s*([\s\S]+?)(?=\n\s*Título\s*:)/i);
+    if (match) {
+      let inventor = match[1].trim();
+      // Limpa quebras de linha extras dentro do nome
+      inventor = inventor.replace(/\n\s*/g, ' ').replace(/\s+/g, ' ');
+      return inventor.length > 0 ? inventor : null;
+    }
+    return null;
+  }
+
+  /**
+   * Extrai título da patente
+   */
+_extrairTitulo(texto) {
+    console.log('[_extrairTitulo] Iniciando extração...');
+    
+    // ALTERAÇÃO PRINCIPAL:
+    // 1. [“"] -> Aceita aspas curvas (“) OU aspas retas (") na abertura
+    // 2. [\s\S]+? -> Captura qualquer caractere, incluindo quebras de linha (modo não guloso)
+    // 3. [”"] -> Para na aspa curva (”) OU aspa reta (") de fechamento
+    let match = texto.match(/Título\s*:\s*[“"]([\s\S]+?)[”"]/i);
+    
+    console.log('[_extrairTitulo] Match com aspas encontrado:', !!match);
+
+    // Fallback: Se não achar com aspas, tenta pegar até a próxima seção (ex: SUBSÍDIOS ou letras maiúsculas no início da linha)
+    if (!match) {
+      console.log('[_extrairTitulo] Tentando padrão alternativo (sem aspas delimitadoras)...');
+      // Procura até encontrar uma quebra de linha seguida de palavra em MAIÚSCULO (início da próx seção)
+      match = texto.match(/Título\s*:\s*([^“"]+?)(?=\n[A-ZÁ-Ú]{3,})/i);
+    }
+
+    if (match) {
+      // match[1] contém apenas o texto DENTRO das aspas
+      let titulo = match[1].trim();
+      
+      // Remove quebras de linha (\n) que quebram o título ao meio e espaços duplos
+      titulo = titulo.replace(/\n\s*/g, ' ').replace(/\s+/g, ' ');
+      
+      // Se você realmente precisa que o resultado final tenha as aspas (como no seu exemplo),
+      // descomente a linha abaixo. Caso contrário, o padrão é retornar o texto limpo.
+      // titulo = `“${titulo}”`; 
+
+      console.log('[_extrairTitulo] Valor final:', JSON.stringify(titulo));
+      return titulo.length > 0 ? titulo : null;
+    }
+    
+    console.log('[_extrairTitulo] Nenhum match encontrado, retornando null');
+    return null;
+}
+
+  /**
+   * Extrai decisão final
+   */
+  _extrairDecisao(texto) {
+    const match = texto.match(/Recurso\s+conhecido\s+e\s+negado\s+provimento\.?\s*Mantido\s+o\s+indeferimento\s+do\s+pedido\s*\[código\s+\d+\]/i);
+    if (match) {
+      return match[0].trim();
+    }
+    return null;
   }
 
   _extrairNomePeticao(texto) {
-    const match = texto.match(/Processo\s+[\w\d\s]+\s+([\s\S]+?)\s+N[úu]mero\s+de\s+protocolo\s*:/i);
-    return match ? match[1].trim() : null;
+    return this._extrairTitulo(texto);
   }
 
   _extrairNumeroProtocolo(texto) {
-    const match = texto.match(/N[úu]mero\s+de\s+protocolo\s*:\s*(\d{6,})/i);
-    return match ? match[1] : null;
+    // Não existe neste tipo de documento
+    return null;
   }
 
   _extrairDataApresentacao(texto) {
-    const match = texto.match(/Data\s+de\s+apresenta[cç][aã]o\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
-    return match ? match[1] : null;
+    return this._extrairDataDeposito(texto);
   }
 
   _extrairRequerente(texto) {
-    const match = texto.match(/(?:Requerente|Depositante)\s*:\s*([\s\S]+?)\s+Indeferimento\s+do\s+pedido/i);
-    return match ? match[1].trim() : null;
+    return this._extrairRequerentNome(texto);
   }
 
   _extrairDataNotificacaoIndeferimento(texto) {
-    const match = texto.match(/Notificada\s+(\d{2}\/\d{2}\/\d{4})/i);
+    // Pode ser extraída de "RPI XXXX de DD/MM/YYYY"
+    const match = texto.match(/RPI\s+\d+\s+de\s+(\d{2}\/\d{2}\/\d{4})/);
     return match ? match[1] : null;
   }
 
   _extrairNomeDecisao(texto) {
-    const match = texto.match(/Recurso\s+n[ãa]o\s+provido\.?\s*Decis[aã]o\s+mantida/i);
-    return match ? match[0].trim() : null;
+    return this._extrairDecisao(texto);
   }
 
   _extrairDataParecer(texto) {
-    const match = texto.match(/Data\s+do\s+parecer\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
-    return match ? match[1] : null;
+    // Data da decisão final
+    const match = texto.match(/Rio\s+de\s+Janeiro,\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+    if (match) {
+      const dia = match[1].padStart(2, '0');
+      const meses = {
+        'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04',
+        'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
+        'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+      };
+      const mes = meses[match[2].toLowerCase()] || '01';
+      const ano = match[3];
+      return `${dia}/${mes}/${ano}`;
+    }
+    return null;
   }
 
   _extrairNumeroParecer(texto) {
-    const match = texto.match(/N[úu]mero\s+do\s+parecer\s*:\s*(\d{3,})/i);
-    return match ? match[1] : null;
+    // Não existe neste tipo de documento
+    return null;
   }
 
   _extrairTextoAutomaticoEtapa1(texto) {
-    const match = texto.match(/(?:Pedido|Processo)\s+de\s+patente[\s\S]+?N[úu]mero\s+do\s+parecer\s*:\s*\d+/i);
-    return match ? match[0].trim() : null;
+    // Extrai seção de subsídios técnicos (do início até antes dos subsídios)
+    const match = texto.match(/^([\s\S]+?)SUBSÍDIOS\s+TÉCNICOS/i);
+    if (match) {
+      let textoEtapa1 = match[1].trim();
+      // Remove padrão "\nCódigo:..." até o número do processo
+      textoEtapa1 = textoEtapa1.replace(/\nCódigo:[^\n]+\n[^\n]+/g, '');
+      return textoEtapa1.trim();
+    }
+    return null;
   }
 
-  _extrairTextoAutomaticoEtapa2(texto) {
-    const match = texto.match(/MINIST[ÉE]RIO\s+DO\s+DESENVOLVIMENTO,[\s\S]+?(?=Decis[aã]o\s+tomada\s+pelo\s+Presidente)/i);
-    return match ? match[0].trim() : null;
-  }
+_extrairTextoAutomaticoEtapa2(texto) {
+    console.log('[_extrairTextoAutomaticoEtapa2] Iniciando extração...');
+
+    // REGEX EXPLICADA:
+    // 1. (SERVIÇO\s+PÚBLICO\s+FEDERAL) -> Início do bloco [cite: 1, 11]
+    // 2. [\s\S]+? -> Pega tudo no meio (não-guloso)
+    // 3. Título\s*:\s*[“"] -> Encontra "Título:", espaços e abre aspas (retas ou curvas) [cite: 2, 12]
+    // 4. [\s\S]+? -> Pega o conteúdo do título (incluindo quebras de linha)
+    // 5. [”"] -> Para na aspa de fechamento (reta ou curva)
+    // 6. Flags 'gi': Global (pega todos) e Case-insensitive
+    const regex = /SERVIÇO\s+PÚBLICO\s+FEDERAL[\s\S]+?Título\s*:\s*[“"][\s\S]+?[”"]/gi;
+
+    const matches = texto.match(regex);
+    console.log('[_extrairTextoAutomaticoEtapa2] Matches encontrados:', matches ? matches.length : 0);
+
+    if (matches && matches.length > 0) {
+        // Pega o ÚLTIMO elemento do array (que corresponde ao bloco final desejado)
+        const ultimoBloco = matches[matches.length - 1]; 
+        
+        console.log('[_extrairTextoAutomaticoEtapa2] Tamanho do match final:', ultimoBloco.length);
+        // Exibe um trecho para conferência
+        console.log('[_extrairTextoAutomaticoEtapa2] Início do bloco capturado:', JSON.stringify(ultimoBloco.substring(0, 100)));
+        
+        return ultimoBloco;
+    }
+
+    console.log('[_extrairTextoAutomaticoEtapa2] Nenhum match encontrado');
+    return null;
+}
 
   _extrairTextoParecer(texto) {
-    const match = texto.match(/N[úu]mero\s+do\s+parecer\s*:\s*\d+\s*([\s\S]+?)(?=\n[A-ZÁÉÍÓÚÂÊÔÃÕÇ ]{3,}\s*\n\s*Delegação\s+de\s+compet[eê]ncia|\nMINIST[ÉE]RIO|\nPRESID[ÊE]NCIA|$)/i);
-    if (!match) return null;
-
-    const textoParecer = match[1].trim();
-    const inicioMarcador = '<<<INICIO_TEXTO_PARECER>>>';
-    const fimMarcador = '<<<FIM_TEXTO_PARECER>>>';
-
-    return `${inicioMarcador}\n${textoParecer}\n${fimMarcador}`;
+    // Extrai subsídios técnicos como parecer
+    const match = texto.match(/Sr\.\s+Presidente,([\s\S]+?)(?=Recurso\s+conhecido|Código:|$)/i);
+    if (match) {
+      const parecer = match[1].trim();
+      const inicioMarcador = '<<<INICIO_TEXTO_PARECER>>>';
+      const fimMarcador = '<<<FIM_TEXTO_PARECER>>>';
+      return `${inicioMarcador}\n${parecer}\n${fimMarcador}`;
+    }
+    return null;
   }
 
   _extrairTecnico(texto) {
-    // Primeira regra: Captura nome em maiúsculas antes de "Delegação de competência"
-    let match = texto.match(/(?:\.\s+|\n\s*)([A-ZÁÉÍÓÚÂÊÔÃÕÇ]+(?: [A-ZÁÉÍÓÚÂÊÔÃÕÇ]+)*)\s+Delegação\s+de\s+compet[eê]ncia/i);
-    if (match) return match[1].trim();
-    
-    // Segunda regra (fallback): Captura após "à consideração superior." até "Delegação de competência"
-    match = texto.match(/à\s+considera[çc][ãa]o\s+superior\.?\s+([\s\S]+?)\s+Delegação\s+de\s+compet[eê]ncia/i);
+    // Extrai nome do técnico/coordenador responsável
+    const match = texto.match(/Coordenador\s+(?:Técnico|Substituta)\/Mat\.\s+[^\n]+\n(.+?)Portaria/i);
     if (match) {
-      const textoBruto = match[1].trim();
-      // Extrai apenas a primeira palavra/nome em maiúsculas
-      const nomeMaiuscula = textoBruto.match(/^([A-ZÁÉÍÓÚÂÊÔÃÕÇ]+(?: [A-ZÁÉÍÓÚÂÊÔÃÕÇ]+)*)/);
-      return nomeMaiuscula ? nomeMaiuscula[1].trim() : textoBruto;
+      return match[1].trim();
     }
-    
     return null;
   }
   
   _extrairDataDespacho(texto) {
-    const matchDataDecisao = texto.match(/Data\s+da\s+decis[ãa]o\s+(\d{2}\/\d{2}\/\d{4})/i);
-    if (matchDataDecisao) return matchDataDecisao[1];
-    
-    const matchPrimeiraData = texto.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
-    return matchPrimeiraData ? matchPrimeiraData[1] : null;
+    return this._extrairDataParecer(texto);
   }
   
   _extrairTextoDespacho(texto) {
-    // Texto entre "Recurso não provido" e próxima seção
-    const match = texto.match(/Recurso\s+n[ãa]o\s+provido[.\s]+([\s\S]+?)(?=(?:Efetuadas\s+buscas|Matr[íi]cula\s+SIAPE|Processo\s+[\w\d]+|$))/i);
-    if (match) return match[1].trim();
-    
-    // Fallback: primeiros 500 caracteres após "não provido"
-    const matchSimples = texto.match(/n[ãa]o\s+provido[.\s]+([\s\S]{1,500})/i);
-    return matchSimples ? matchSimples[1].trim() : null;
+    return this._extrairDecisao(texto);
   }
   
   _extrairArtigosInvocados(texto) {
     const artigos = [];
-    const regex = /(?:art|artigo)\s*\.?\s*(\d+)(?:\s*,?\s*(?:inc|inciso)\s*\.?\s*([IVX]+))?\b/gi;
+    const regex = /(?:artigos?|art\.?)\s+(\d+)(?:\s*[°oc]\.?\/c\.c\.?\s*(\d+))?/gi;
     let match;
     
     while ((match = regex.exec(texto)) !== null) {
       const numeroArtigo = match[1];
-      const inciso = match[2] || '';
+      const numeroArtigo2 = match[2];
       
-      // Ignora art. 212 e art. 169 (artigos procedimentais)
-      if (numeroArtigo === '212' || numeroArtigo === '169') {
-        continue;
-      }
-      
-      // Normaliza formato: sempre "Art. XXX" ou "Art. XXX, inc. X"
-      const artigoNormalizado = inciso 
-        ? `Art. ${numeroArtigo}, inc. ${inciso}`
-        : `Art. ${numeroArtigo}`;
-      
-      if (!artigos.includes(artigoNormalizado)) {
-        artigos.push(artigoNormalizado);
+      artigos.push(`Art. ${numeroArtigo}`);
+      if (numeroArtigo2) {
+        artigos.push(`Art. ${numeroArtigo2}`);
       }
     }
     
-    return artigos;
+    return [...new Set(artigos)]; // Remove duplicatas
   }
   
   _extrairMotivoIndeferimento(texto) {
-    // Captura após "FOI INDEFERIDO COM A SEGUINTE MOTIVAÇÃO:" até um dos marcadores de fim
-    const match = texto.match(/FOI\s+INDEFERIDO\s+COM\s+A\s+SEGUINTE\s+MOTIVA[ÇC][ÃA]O\s*:([\s\S]+?)(?=alega[çc][õo]es\s+d[oa]\s+(?:requerente|depositante)|Inicialmente|No\s+m[ée]rito|Ap[óo]s\s+ter\s+sido\s+examinado|$)/i);
-    if (match) return match[1].trim();
-    
+    // Extrai motivação do indeferimento
+    const match = texto.match(/foi\s+indeferido\s+com\s+base\s+nos\s+([\s\S]+?)(?=\.\s*Tal\s+decisão|$)/i);
+    if (match) {
+      return match[1].trim();
+    }
     return null;
   }
   
   _extrairAnterioridades(texto) {
-    const anterioridades = [];
-    
-    // Para patentes, pode haver referências de estado da técnica (documentos D1, D2, etc.)
-    // Captura documentos citados como anterioridade
-    const regexEstadoTecnica = /(?:documento|referência|anterioridade)\s+([D]\d+)/gi;
-    let match;
-    
-    while ((match = regexEstadoTecnica.exec(texto)) !== null) {
-      const doc = match[1];
-      if (!anterioridades.includes(doc)) {
-        anterioridades.push(doc);
-      }
-    }
-    
-    // Também captura pedidos BR citados como anterioridade
-    const regexBR = /anterioridade.*?(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/gi;
-    while ((match = regexBR.exec(texto)) !== null) {
-      const processo = match[1].replace(/\s+/g, '');
-      if (!anterioridades.includes(processo)) {
-        anterioridades.push(processo);
-      }
-    }
-    
-    return anterioridades;
+    // Não aplicável para este tipo de documento
+    return [];
   }
   
   _extrairProcessosConflitantes(texto) {
-    const processos = [];
-    
-    // Captura pedidos BR mencionados
-    const regexBR = /(?:Pedido|Processo)\s+(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/gi;
-    let match;
-    
-    while ((match = regexBR.exec(texto)) !== null) {
-      const processo = match[1].replace(/\s+/g, '');
-      if (!processos.includes(processo)) {
-        processos.push(processo);
-      }
-    }
-    
-    // Remove o processo principal (primeiro encontrado)
-    if (processos.length > 1) {
-      processos.shift();
-    }
-    
-    return processos;
+    // Não aplicável para este tipo de documento
+    return [];
   }
 }
