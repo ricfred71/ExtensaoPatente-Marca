@@ -1,7 +1,7 @@
 /**
- * sectors/marcas/types/recurso-indef/extractor.js
+ * sectors/patentes/types/pet_recurso-indef/pet_extractor.js
  * 
- * Extractor específico para: Recurso contra Indeferimento de Pedido de Registro de Marca
+ * Extractor específico para: Recurso contra Indeferimento de Pedido de Patente
  * Implementa os métodos de captura específicos do tipo
  */
 
@@ -20,7 +20,7 @@ export class RecursoIndefExtractor {
    * @returns {Object} { storageKey, dados, validacao }
    */
   extract(textoCompleto, classificacao, urlPdf = '') {
-    console.log('[RecursoIndefExtractor] Extraindo dados do Recurso contra Indeferimento...');
+    console.log('[RecursoIndefExtractor - PATENTES] Extraindo dados do Recurso contra Indeferimento de Patente...');
     
     // Encontra o ponto de corte: "Declaro, sob as penas da lei,"
     const regexDeclaro = /Declaro,\s+sob\s+as\s+penas\s+da\s+lei,/i;
@@ -40,7 +40,7 @@ export class RecursoIndefExtractor {
       numeroProcesso: this._extrairNumeroProcesso(textoPaginaUm),
       nossoNumero: this._extrairNossoNumero(textoPaginaUm),
       dataPeticao: this._extrairDataPeticao(textoPaginaUm),
-      form_Anexos: this._extrairAnexos(textoCompleto)
+    form_Anexos: this._extrairAnexos(textoCompleto)
     };
     
     const requerente = {
@@ -70,20 +70,19 @@ export class RecursoIndefExtractor {
     // DADOS ESPECÍFICOS DO TIPO
     // ========================================
     const dadosEspecificos = {
-      form_TextoDaPetição: this._extrairTextoDaPetição(textoCompleto),
-    
+      // Patentes não possui campo form_TextoDaPetição
     };
     
     // ========================================
     // MONTA OBJETO FINAL
     // ========================================
-    const storageKey = `peticao_${peticao.numeroProcesso}_${sanitizeFilename('recurso_indef')}_${peticao.numeroPeticao}`;
+    const storageKey = `peticao_${peticao.numeroProcesso}_${sanitizeFilename('recurso_indef_patente')}_${peticao.numeroPeticao}`;
     
     const objetoFinal = {
       // Metadados de classificação
       categoria: 'peticao',
-      setor: 'marcas',
-      tipo: classificacao.tipoId || 'recursoIndeferimentoPedidoRegistro',
+      setor: 'patentes',
+      tipo: classificacao.tipoId || 'recursoIndeferimentoPedidoPatente',
       subtipo: classificacao.subtipoId || '',
       confianca: classificacao.confianca || 0,
       
@@ -120,9 +119,7 @@ export class RecursoIndefExtractor {
       dataProcessamento: new Date().toISOString(),
       
       // Dados específicos do tipo
-      //representa o campo do furmulario "Texto da Petição" - onde é posto um resumo do recurso
-      form_TextoDaPetição: dadosEspecificos.form_TextoDaPetição || null,
-      form_Anexos: dadosEspecificos.form_Anexos || []
+      form_Anexos: peticao.form_Anexos || []
     };
     
     // ========================================
@@ -131,10 +128,10 @@ export class RecursoIndefExtractor {
     const validacao = validarRecursoIndef(objetoFinal);
     
     if (!validacao.valido) {
-      console.warn('[RecursoIndefExtractor] ⚠️ Validação com erros:', validacao.erros);
+      console.warn('[RecursoIndefExtractor - PATENTES] ⚠️ Validação com erros:', validacao.erros);
     }
     
-    console.log('[RecursoIndefExtractor] ✅ Dados extraídos:', {
+    console.log('[RecursoIndefExtractor - PATENTES] ✅ Dados extraídos:', {
       storageKey,
       numeroProcesso: peticao.numeroProcesso,
       numeroPeticao: peticao.numeroPeticao,
@@ -157,8 +154,8 @@ export class RecursoIndefExtractor {
    * Extrai número da petição (12 dígitos)
    */
   _extrairNumeroPeticao(texto) {
-    const matchPeticaoDeMarca = texto.match(/\bPeti[cç][ãa]o\s+de\s+Marca\s+(\d{12})\b/i);
-    if (matchPeticaoDeMarca) return matchPeticaoDeMarca[1];
+    const matchPeticaoDePatente = texto.match(/\bPeti[cç][ãa]o\s+de\s+Patente\s+(\d{12})\b/i);
+    if (matchPeticaoDePatente) return matchPeticaoDePatente[1];
     
     const matchDepoisLabel = texto.match(/N[úu]mero\s+da\s+Peti[cç][ãa]o\s*:\s*(\d{12})\b/);
     if (matchDepoisLabel) return matchDepoisLabel[1];
@@ -171,17 +168,19 @@ export class RecursoIndefExtractor {
   }
   
   /**
-   * Extrai número do processo (9 dígitos)
+   * Extrai número do processo (pedido de patente - pode ser 10 ou 13 caracteres BR...)
    */
   _extrairNumeroProcesso(texto) {
-    const matchDepoisLabel = texto.match(/N[úu]mero\s+do\s+Processo\s*:\s*(\d{9})\b/);
-    if (matchDepoisLabel) return matchDepoisLabel[1];
+    // Padrão específico para patentes: BR + números
+    const matchBR = texto.match(/\b(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)\b/i);
+    if (matchBR) return matchBR[1].replace(/\s+/g, '');
     
-    const matchAposDataHora = texto.match(/\b\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+(\d{9})\s+N[úu]mero\s+do\s+Processo\b/);
-    if (matchAposDataHora) return matchAposDataHora[1];
+    const matchDepoisLabel = texto.match(/N[úu]mero\s+do\s+(?:Processo|Pedido)\s*:\s*(BR\s*[\d\s-]+)/i);
+    if (matchDepoisLabel) return matchDepoisLabel[1].replace(/\s+/g, '');
     
-    const matchAntes = texto.match(/(\d{9})\s*(?=N[úu]mero\s+do\s+Processo)/);
-    if (matchAntes) return matchAntes[1];
+    // Fallback para formato legado (9 dígitos)
+    const matchLegado = texto.match(/N[úu]mero\s+do\s+Processo\s*:\s*(\d{9})\b/);
+    if (matchLegado) return matchLegado[1];
     
     const matchPrimeiro = texto.match(/\b(\d{9})\b/);
     return matchPrimeiro ? matchPrimeiro[1] : null;
@@ -200,34 +199,43 @@ export class RecursoIndefExtractor {
    * Extrai data e hora da petição
    */
   _extrairDataPeticao(texto) {
-    const regex = /(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2})|(\d{2}:\d{2})\s*(\d{2}\/\d{2}\/\d{4})/;
-    const match = texto.match(regex);
-    if (!match) return null;
+    // Busca data seguida de hora na mesma linha ou em linhas próximas
+    const regexMesmaLinha = /(\d{2}\/\d{2}\/\d{4})\s*(\d{2}:\d{2})|(\d{2}:\d{2})\s*(\d{2}\/\d{2}\/\d{4})/;
+    const matchMesmaLinha = texto.match(regexMesmaLinha);
     
-    if (match[1] && match[2]) return `${match[1]} ${match[2]}`;
-    if (match[3] && match[4]) return `${match[4]} ${match[3]}`;
+    if (matchMesmaLinha) {
+      if (matchMesmaLinha[1] && matchMesmaLinha[2]) return `${matchMesmaLinha[1]} ${matchMesmaLinha[2]}`;
+      if (matchMesmaLinha[3] && matchMesmaLinha[4]) return `${matchMesmaLinha[4]} ${matchMesmaLinha[3]}`;
+    }
     
-    return null;
+    // Busca data e hora separadas (pode ter quebra de linha entre elas)
+    const regexSeparado = /(\d{2}\/\d{2}\/\d{4})[\s\S]{0,50}?(\d{2}:\d{2})/;
+    const matchSeparado = texto.match(regexSeparado);
+    if (matchSeparado) {
+      return `${matchSeparado[1]} ${matchSeparado[2]}`;
+    }
+    
+    // Se não encontrar hora, retorna só a data
+    const regexSoData = /(\d{2}\/\d{2}\/\d{4})/;
+    const matchSoData = texto.match(regexSoData);
+    return matchSoData ? matchSoData[1] : null;
   }
   
   /**
    * Extrai nome do requerente
    */
   _extrairRequerenteNome(texto) {
-    const match = texto.match(/Nome(?:\s*\/\s*Raz[ãa]o\s+Social)?\s*:\s*(.*?)\s*(?=CPF\/CNPJ\/N[úu]mero\s+INPI\s*:)/s);
+    const match = texto.match(/Nome\s+ou\s+Raz[ãa]o\s+Social\s*:\s*(.*?)\s*(?=Tipo\s+de\s+Pessoa|CPF\/CNPJ)/s);
     return match ? match[1].trim().replace(/\s+/g, ' ') : null;
   }
   
   /**
-   * Extrai CPF/CNPJ/Número INPI do requerente
+   * Extrai CPF/CNPJ do requerente (depositante)
    */
   _extrairRequerenteCpfCnpjNumINPI(texto) {
-    const match = texto.match(
-      /CPF\/CNPJ\/N[úu]mero\s+INPI\s*:\s*(.*?)(?=\s*(?:Endere[cç]o|Cidade|Estado|CEP|Pa[ií]s|Natureza\s+Jur[íi]dica|(?:e-?mail|email)|Dados\s+Gerais|Dados\s+do\s+Procurador\/Escrit[óo]rio)\b)/is
-    );
-    if (!match) return null;
-    const value = match[1].trim();
-    return value.length > 0 ? value : null;
+    // Para patentes, procura na seção "Dados do Depositante"
+    const match = texto.match(/Dados\s+do\s+Depositante[\s\S]*?CPF\/CNPJ\s*:\s*(\d+)/);
+    return match ? match[1].trim() : null;
   }
   
   /**
@@ -260,7 +268,7 @@ export class RecursoIndefExtractor {
    * Extrai CEP do requerente
    */
   _extrairRequerenteCep(texto) {
-    const match = texto.match(/CEP:\s*(.*?)(?=\s*Pais:)/s);
+    const match = texto.match(/CEP\s*:\s*([\d-]+)/);
     const cep = match ? match[1].trim() : null;
     return cep && cep.length > 0 ? cep : null;
   }
@@ -269,15 +277,15 @@ export class RecursoIndefExtractor {
    * Extrai país do requerente
    */
   _extrairRequerentePais(texto) {
-    const match = texto.match(/Pa[ií]s\s*:\s*(.*?)(?=\s*Natureza\s+Jur[íi]dica\s*:)/s);
+    const match = texto.match(/Pa[ií]s\s*:\s*(.*?)(?=\s*(?:Telefone|Fax|Email|Referência))/s);
     return match ? match[1].trim() : null;
   }
   
   /**
-   * Extrai natureza jurídica do requerente
+   * Extrai qualificação jurídica do requerente (em patentes é 'Qualificação Jurídica')
    */
   _extrairRequerenteNaturezaJuridica(texto) {
-    const match = texto.match(/Natureza\s+Jur[íi]dica\s*:\s*(.*?)(?=\s*(?:e-?mail|email)\s*:)/is);
+    const match = texto.match(/Qualifica[çc][ãa]o\s+Jur[íi]dica\s*:\s*(.*?)(?=\s*(?:Endere[çc]o|CPF))/is);
     return match ? match[1].trim() : null;
   }
   
@@ -297,7 +305,8 @@ export class RecursoIndefExtractor {
    * Extrai CPF do procurador
    */
   _extrairProcuradorCpf(texto) {
-    const match = texto.match(/CPF\s*:\s*([\d.\-]{11,})/);
+    // Em patentes, procura na seção "Dados do Procurador" -> "Procurador:" -> "CPF/CNPJ:"
+    const match = texto.match(/Procurador\s*:[\s\S]*?CPF\/CNPJ\s*:\s*(\d+)/);
     if (!match) return null;
     const digits = match[1].replace(/\D/g, '');
     return digits.length === 11 ? digits : null;
@@ -307,7 +316,8 @@ export class RecursoIndefExtractor {
    * Extrai nome do procurador
    */
   _extrairProcuradorNome(texto) {
-    const match = texto.match(/CPF\s*:\s*[\d.\-]{11,}\s*Nome\s*:\s*(.*?)(?=\s*UF\s*:)/s);
+    // Em patentes, procura na seção "Dados do Procurador" -> "Procurador:" -> "Nome ou Razão Social:"
+    const match = texto.match(/Procurador\s*:[\s\S]*?Nome\s+ou\s+Raz[ãa]o\s+Social\s*:\s*(.*?)(?=\s*(?:Numero\s+OAB|CPF))/i);
     return match ? match[1].trim().replace(/\s+/g, ' ') : null;
   }
   
@@ -315,7 +325,8 @@ export class RecursoIndefExtractor {
    * Extrai UF do procurador
    */
   _extrairProcuradorUF(texto) {
-    const match = texto.match(/UF\s*:\s*(\w{2})/);
+    // Em patentes, procura "Estado:" na seção do Procurador
+    const match = texto.match(/Procurador\s*:[\s\S]*?Estado\s*:\s*(\w{2})/);
     return match ? match[1] : null;
   }
   
@@ -333,7 +344,7 @@ export class RecursoIndefExtractor {
    * Extrai número API do procurador
    */
   _extrairProcuradorNumeroAPI(texto) {
-    const match = texto.match(/N[ºo°]\s*API\s*:\s*(.*?)(?=\s*(?:e-?mail|email)\s*:)/is);
+    const match = texto.match(/Numero\s+API\s*:\s*(\d+)/);
     const api = match ? match[1].trim() : null;
     return api && api.length > 0 ? api : null;
   }
@@ -342,7 +353,8 @@ export class RecursoIndefExtractor {
    * Extrai e-mail do procurador
    */
   _extrairProcuradorEmail(texto) {
-    const match = texto.match(/N[ºo°]\s*API\s*:.*?(?:e-?mail|email)\s*:\s*([\w.\-]+@[\w.\-]+)/is);
+    // Em patentes, procura "Email:" na seção do Procurador
+    const match = texto.match(/Procurador\s*:[\s\S]*?Email\s*:\s*([\w.\-]+@[\w.\-]+)/);
     return match ? match[1].trim() : null;
   }
   
@@ -350,69 +362,69 @@ export class RecursoIndefExtractor {
    * Extrai CNPJ do escritório
    */
   _extrairEscritorioCNPJ(texto) {
-    const match = texto.match(/Dados do Procurador\/Escritório\s*(\d{14})/);
-    return match ? match[1] : null;
+    // Em patentes, busca o segundo CPF/CNPJ após a seção do Procurador (que é do escritório)
+    const procuradorSection = texto.match(/Dados\s+do\s+Procurador[\s\S]*/);
+    if (!procuradorSection) return null;
+    
+    const matches = procuradorSection[0].match(/CPF\/CNPJ\s*:\s*(\d+)/g);
+    if (matches && matches.length >= 2) {
+      const cnpjMatch = matches[1].match(/\d+/);
+      return cnpjMatch ? cnpjMatch[0] : null;
+    }
+    return null;
   }
   
   /**
    * Extrai nome do escritório
    */
   _extrairEscritorioNome(texto) {
-    const match = texto.match(/\d{14}\s*CNPJ\s*:\s*Nome\s*:\s*(.*?)(?=\s*N[ºo°]\s*API\s*:)/s);
+    // Em patentes, após a seção do Procurador, busca "Nome ou Razão Social:" do escritório
+    const match = texto.match(/Email\s*:[^\n]*\n[\s\S]*?Nome\s+ou\s+Raz[ãa]o\s+Social\s*:\s*(.*?)(?=\s*CPF\/CNPJ)/i);
     return match ? match[1].trim().replace(/\s+/g, ' ') : null;
   }
   
   
   
   // ========================================
-  // MÉTODOS ESPECÍFICOS DO TIPO: RECURSO INDEFERIMENTO
+  // MÉTODOS ESPECÍFICOS DO TIPO: RECURSO INDEFERIMENTO - PATENTES
   // ========================================
   
   /**
-   * Extrai o texto da petição
-   * Localiza entre "Classes objeto do recurso NCL" (com dígitos) e "Texto da Petição"
-   * @private
-   */
-  _extrairTextoDaPetição(texto) {
-    const match = texto.match(/Classes\s+objeto\s+do\s+recurso\s+NCL[\d()\s]+([\s\S]*?)Texto\s+da\s+Peti[çc][ãa]o/i);
-    
-    if (match && match[1]) {
-      let textoExtraido = match[1].trim();
-      // Remove "Página X de Y" do início
-      textoExtraido = textoExtraido.replace(/^Página\s+\d+\s+de\s+\d+\s*\n?\s*/i, '');
-      // Remove "À" ou "A" do início se presente
-      textoExtraido = textoExtraido.replace(/^[ÀA]\s+/i, '');
-      return textoExtraido.trim();
-    }
-    
-    return null;
-  }
-  
-  /**
    * Extrai os anexos da petição
-   * Localiza tabela com colunas "Descrição" e "Nome do Arquivo"
-   * Entre "Nome do Arquivo Descrição Anexos" e "Página|Declaro"
+   * Localiza tabela com colunas "Nome" e "Tipo Anexo"
+   * Antes de "Documentos anexados"
    * @private
    */
   _extrairAnexos(texto) {
-    const blocoMatch = texto.match(/Nome\s+do\s+Arquivo\s+Descrição\s+Anexos\s*([\s\S]*?)(?:Página|Declaro)/i);
+    // Procura a seção entre "Nome Tipo Anexo" e "Documentos anexados"
+    const blocoMatch = texto.match(/Nome\s+Tipo\s+Anexo\s*([\s\S]*?)Documentos\s+anexados/i);
     
     if (!blocoMatch || !blocoMatch[1]) {
       return [];
     }
     
-    let dadosBrutos = blocoMatch[1].trim();
-    dadosBrutos = dadosBrutos.replace(/\n/g, ' ');
-    
-    const regexLinha = /(.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))\s+(.+?)(?=\s+.+?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg)|$)/gi;
-    let match;
+    const linhas = blocoMatch[1].trim().split('\n').filter(linha => linha.trim());
     const listaDeAnexos = [];
     
-    while ((match = regexLinha.exec(dadosBrutos)) !== null) {
-      listaDeAnexos.push({
-        nomeArquivo: match[1].trim(),
-        descricao: match[3].trim()
-      });
+    for (let i = 0; i < linhas.length; i++) {
+      let linhaCompleta = linhas[i];
+      
+      // Se a linha atual não termina com extensão válida, junta com a próxima
+      while (i < linhas.length - 1 && !/\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg)$/i.test(linhaCompleta)) {
+        i++;
+        linhaCompleta += ' ' + linhas[i];
+      }
+      
+      // Separa tipo de anexo e nome do arquivo
+      // Formato: "Tipo de anexo Nome_do_arquivo.ext"
+      // Nome do arquivo pode conter espaços
+      const match = linhaCompleta.match(/^(.+?)\s+(.*?\.(pdf|doc|docx|xls|xlsx|txt|jpg|png|jpeg))$/i);
+      if (match) {
+        listaDeAnexos.push({
+          'Tipo Anexo': match[1].trim(),
+          'Nome': match[2].trim()
+        });
+      }
     }
     
     return listaDeAnexos;

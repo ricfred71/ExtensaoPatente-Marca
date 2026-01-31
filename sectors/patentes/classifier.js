@@ -18,11 +18,14 @@ export class PatentesClassifier {
     // Regras para identificação de tipos de PETIÇÃO
     this.regrasPeticao = [
       {
-        id: 'recursoIndeferimentoPedidoRegistro',
-        descricao: 'Recurso de patente de invenção, modelo de utilidade ou certificado',
+        id: 'recursoIndeferimentoPedidoPatente',
+        descricao: 'Recurso contra indeferimento de pedido de patente',
         test: (texto) => {
-          const texto200 = texto.substring(0, 200).trim();
-          return texto200.startsWith('Recurso de patente de invenção, modelo de utilidade ou certificado de adição de invenção');
+          const texto500 = texto.substring(0, 500).toLowerCase();
+          // Padrões que indicam recurso contra indeferimento de patente
+          return /recurso.*?patente.*?(?:inven[çc][ãa]o|utilidade|certificado)/i.test(texto500) ||
+                 /recurso.*?(?:contra|de).*?indeferimento/i.test(texto500) ||
+                 texto500.includes('recurso de patente');
         }
       }
       // Outros tipos de petição serão adicionados aqui
@@ -31,11 +34,14 @@ export class PatentesClassifier {
     // Regras para identificação de tipos de DOCUMENTO OFICIAL
     this.regrasDocOficial = [
       {
-        id: 'recursoIndeferimentoPedidoRegistro_naoProvido',
-        descricao: 'Recurso conhecido e negado provimento',
+        id: 'recursoIndeferimentoNaoProvidoPatente',
+        descricao: 'Recurso não provido - decisão de indeferimento mantida',
         test: (texto) => {
-          const ultimos400 = texto.substring(Math.max(0, texto.length - 400));
-          return ultimos400.includes('Recurso conhecido e negado provimento. Mantido o indeferimento do pedido');
+          const textoLower = texto.toLowerCase();
+          // Padrões que indicam recurso não provido em patentes
+          return /recurso\s+(?:n[ãa]o\s+provido|conhecido\s+e\s+negado\s+provimento)/i.test(textoLower) ||
+                 /mantid[oa]\s+(?:a\s+decis[ãa]o\s+de\s+)?indeferimento/i.test(textoLower) ||
+                 /recurso.*?indeferid[oa]/i.test(textoLower);
         }
       }
       // Outros tipos de documento oficial serão adicionados aqui

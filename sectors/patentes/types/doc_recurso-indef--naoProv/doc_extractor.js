@@ -1,7 +1,7 @@
 /**
- * sectors/marcas/types/doc_recurso-indef--naoProv/doc_extractor.js
+ * sectors/patentes/types/doc_recurso-indef--naoProv/doc_extractor.js
  * 
- * Extrator para Documento Oficial: Recurso contra Indeferimento - Não Provido
+ * Extrator para Documento Oficial: Recurso contra Indeferimento de Patente - Não Provido
  */
 
 import { validarDocRecursoIndefNaoProv } from './doc_schema.js';
@@ -20,7 +20,7 @@ export class DocRecursoIndefNaoProvExtractor {
    * @returns {Object} { storageKey, dados, validacao }
    */
   extract(textoCompleto, classificacao, urlPdf = '') {
-    console.log('[DocRecursoIndefNaoProvExtractor] Extraindo dados do documento pdf.read.js - tudo que tem dentro do pdf...');
+    console.log('[DocRecursoIndefNaoProvExtractor - PATENTES] Extraindo dados do documento oficial de patente...');
 
     const textoDocOficial = textoCompleto;
     
@@ -32,8 +32,8 @@ export class DocRecursoIndefNaoProvExtractor {
     const dados = {
       // Metadados
       categoria: 'documento_oficial',
-      setor: 'marcas',
-      tipo: classificacao.tipoId || 'recursoIndeferimentoNaoProvido',
+      setor: 'patentes',
+      tipo: classificacao.tipoId || 'recursoIndeferimentoNaoProvidoPatente',
       subtipo: classificacao.subtipoId || '',
       confianca: classificacao.confianca || 0,
 
@@ -65,7 +65,7 @@ export class DocRecursoIndefNaoProvExtractor {
       decisao: 'indeferido_mantido',
       motivoIndeferimento: this._extrairMotivoIndeferimento(textoDocOficial) || null,
       
-      // Anterioridades
+      // Anterioridades (para patentes podem ser referências de estado da técnica)
       anterioridades: this._extrairAnterioridades(textoDocOficial) || [],
       processosConflitantes: this._extrairProcessosConflitantes(textoDocOficial) || [],
       
@@ -80,9 +80,9 @@ export class DocRecursoIndefNaoProvExtractor {
     const validacao = validarDocRecursoIndefNaoProv(dados);
     
     // Storage key
-    const storageKey = `doc_oficial_${numeroProcesso}_recurso_nao_provido`;
+    const storageKey = `doc_oficial_${numeroProcesso}_recurso_nao_provido_patente`;
     
-    console.log('[DocRecursoIndefNaoProvExtractor] Extração concluída:', {
+    console.log('[DocRecursoIndefNaoProvExtractor - PATENTES] Extração concluída:', {
       storageKey,
       valido: validacao.valido,
       campos: validacao.campos_preenchidos
@@ -100,6 +100,11 @@ export class DocRecursoIndefNaoProvExtractor {
   // ========================================
   
   _extrairNumeroProcesso(texto) {
+    // Padrão específico para patentes: BR + números
+    const matchBR = texto.match(/(?:Pedido|Processo)\s+(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/i);
+    if (matchBR) return matchBR[1].replace(/\s+/g, '');
+    
+    // Fallback para formato legado
     const match = texto.match(/Processo\s+(\d{9})/i);
     if (match) return match[1];
     
@@ -108,7 +113,7 @@ export class DocRecursoIndefNaoProvExtractor {
   }
 
   _extrairNomePeticao(texto) {
-    const match = texto.match(/Processo\s+\d{9}\s+([\s\S]+?)\s+N[úu]mero\s+de\s+protocolo\s*:/i);
+    const match = texto.match(/Processo\s+[\w\d\s]+\s+([\s\S]+?)\s+N[úu]mero\s+de\s+protocolo\s*:/i);
     return match ? match[1].trim() : null;
   }
 
@@ -123,7 +128,7 @@ export class DocRecursoIndefNaoProvExtractor {
   }
 
   _extrairRequerente(texto) {
-    const match = texto.match(/Requerente\s*:\s*([\s\S]+?)\s+Indeferimento\s+do\s+pedido/i);
+    const match = texto.match(/(?:Requerente|Depositante)\s*:\s*([\s\S]+?)\s+Indeferimento\s+do\s+pedido/i);
     return match ? match[1].trim() : null;
   }
 
@@ -148,7 +153,7 @@ export class DocRecursoIndefNaoProvExtractor {
   }
 
   _extrairTextoAutomaticoEtapa1(texto) {
-    const match = texto.match(/Processo\s+de\s+registro\s+de\s+marca[\s\S]+?N[úu]mero\s+do\s+parecer\s*:\s*\d+/i);
+    const match = texto.match(/(?:Pedido|Processo)\s+de\s+patente[\s\S]+?N[úu]mero\s+do\s+parecer\s*:\s*\d+/i);
     return match ? match[0].trim() : null;
   }
 
@@ -157,7 +162,6 @@ export class DocRecursoIndefNaoProvExtractor {
     return match ? match[0].trim() : null;
   }
 
-  //Resultado do PDF na etapa 1: tudo depois da parte automática do INPI (Recurso não provido. Decisão mantida  Data do parecer: 26/01/2026  Número do parecer: 133221) - 
   _extrairTextoParecer(texto) {
     const match = texto.match(/N[úu]mero\s+do\s+parecer\s*:\s*\d+\s*([\s\S]+?)(?=\n[A-ZÁÉÍÓÚÂÊÔÃÕÇ ]{3,}\s*\n\s*Delegação\s+de\s+compet[eê]ncia|\nMINIST[ÉE]RIO|\nPRESID[ÊE]NCIA|$)/i);
     if (!match) return null;
@@ -171,7 +175,6 @@ export class DocRecursoIndefNaoProvExtractor {
 
   _extrairTecnico(texto) {
     // Primeira regra: Captura nome em maiúsculas antes de "Delegação de competência"
-    // Exemplo: "(...).  RICARDO FREDERICO NICOL Delegação de competência"
     let match = texto.match(/(?:\.\s+|\n\s*)([A-ZÁÉÍÓÚÂÊÔÃÕÇ]+(?: [A-ZÁÉÍÓÚÂÊÔÃÕÇ]+)*)\s+Delegação\s+de\s+compet[eê]ncia/i);
     if (match) return match[1].trim();
     
@@ -195,14 +198,9 @@ export class DocRecursoIndefNaoProvExtractor {
     return matchPrimeiraData ? matchPrimeiraData[1] : null;
   }
   
-  // _extrairNumeroRPI(texto) {
-  //   const match = texto.match(/RPI\s*[Nn][ºo°]\s*(\d+)/i);
-  //   return match ? match[1] : null;
-  // }
-  
   _extrairTextoDespacho(texto) {
     // Texto entre "Recurso não provido" e próxima seção
-    const match = texto.match(/Recurso\s+n[ãa]o\s+provido[.\s]+([\s\S]+?)(?=(?:Efetuadas\s+buscas|Matr[íi]cula\s+SIAPE|Processo\s+\d{9}|$))/i);
+    const match = texto.match(/Recurso\s+n[ãa]o\s+provido[.\s]+([\s\S]+?)(?=(?:Efetuadas\s+buscas|Matr[íi]cula\s+SIAPE|Processo\s+[\w\d]+|$))/i);
     if (match) return match[1].trim();
     
     // Fallback: primeiros 500 caracteres após "não provido"
@@ -239,12 +237,8 @@ export class DocRecursoIndefNaoProvExtractor {
   
   _extrairMotivoIndeferimento(texto) {
     // Captura após "FOI INDEFERIDO COM A SEGUINTE MOTIVAÇÃO:" até um dos marcadores de fim
-    const match = texto.match(/FOI\s+INDEFERIDO\s+COM\s+A\s+SEGUINTE\s+MOTIVA[ÇC][ÃA]O\s*:([\s\S]+?)(?=alega[çc][õo]es\s+da\s+requerente|Inicialmente|No\s+m[ée]rito|Ap[óo]s\s+ter\s+sido\s+examinado|$)/i);
+    const match = texto.match(/FOI\s+INDEFERIDO\s+COM\s+A\s+SEGUINTE\s+MOTIVA[ÇC][ÃA]O\s*:([\s\S]+?)(?=alega[çc][õo]es\s+d[oa]\s+(?:requerente|depositante)|Inicialmente|No\s+m[ée]rito|Ap[óo]s\s+ter\s+sido\s+examinado|$)/i);
     if (match) return match[1].trim();
-    
-    // Fallback: padrões antigos (comentados para referência)
-    // const matchAntigo = texto.match(/(?:em\s+raz[ãa]o\s+de|tendo\s+em\s+vista)\s+([\s\S]{1,300}?)(?:\.|Processo)/i);
-    // return matchAntigo ? matchAntigo[1].trim() : null;
     
     return null;
   }
@@ -252,44 +246,39 @@ export class DocRecursoIndefNaoProvExtractor {
   _extrairAnterioridades(texto) {
     const anterioridades = [];
     
-    // Extrai trecho entre "MARCA(S) APONTADA(S) COMO IMPEDITIVA(S):" e "Após ter sido examinado"
-    const matchSecao = texto.match(/MARCA\(S\)\s+APONTADA\(S\)\s+COMO\s+IMPEDITIVA\(S\)\s*:([\s\S]+?)(?=Ap[óo]s\s+ter\s+sido\s+examinado|$)/i);
+    // Para patentes, pode haver referências de estado da técnica (documentos D1, D2, etc.)
+    // Captura documentos citados como anterioridade
+    const regexEstadoTecnica = /(?:documento|referência|anterioridade)\s+([D]\d+)/gi;
+    let match;
     
-    if (matchSecao) {
-      const secaoAnterioridades = matchSecao[1];
-      
-      // Captura todas as sequências de 9 dígitos na seção
-      const regex = /\b(\d{9})\b/g;
-      let match;
-      
-      while ((match = regex.exec(secaoAnterioridades)) !== null) {
-        const processo = match[1];
-        if (!anterioridades.includes(processo)) {
-          anterioridades.push(processo);
-        }
+    while ((match = regexEstadoTecnica.exec(texto)) !== null) {
+      const doc = match[1];
+      if (!anterioridades.includes(doc)) {
+        anterioridades.push(doc);
       }
     }
     
-    // Padrões antigos (comentados, mantidos para referência)
-    // const regex = /Processo\s+(\d{9})\s+\([^)]+anterioridade[^)]*\)/gi;
-    // let match;
-    // while ((match = regex.exec(texto)) !== null) {
-    //   const processo = match[1];
-    //   if (!anterioridades.includes(processo)) {
-    //     anterioridades.push(processo);
-    //   }
-    // }
+    // Também captura pedidos BR citados como anterioridade
+    const regexBR = /anterioridade.*?(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/gi;
+    while ((match = regexBR.exec(texto)) !== null) {
+      const processo = match[1].replace(/\s+/g, '');
+      if (!anterioridades.includes(processo)) {
+        anterioridades.push(processo);
+      }
+    }
     
     return anterioridades;
   }
   
   _extrairProcessosConflitantes(texto) {
     const processos = [];
-    const regex = /Processo\s+(\d{9})/gi;
+    
+    // Captura pedidos BR mencionados
+    const regexBR = /(?:Pedido|Processo)\s+(BR\s*\d{2}\s*\d{4}\s*\d{6}[-\s]?\d?)/gi;
     let match;
     
-    while ((match = regex.exec(texto)) !== null) {
-      const processo = match[1];
+    while ((match = regexBR.exec(texto)) !== null) {
+      const processo = match[1].replace(/\s+/g, '');
       if (!processos.includes(processo)) {
         processos.push(processo);
       }
